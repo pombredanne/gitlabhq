@@ -1,4 +1,4 @@
-## Project repository branches
+## List repository branches
 
 Get a list of repository branches from a project, sorted by name alphabetically.
 
@@ -39,7 +39,8 @@ Parameters:
 ]
 ```
 
-## Project repository branch
+
+## Get single repository branch
 
 Get a single project repository branch.
 
@@ -79,12 +80,11 @@ Parameters:
 }
 ```
 
-Will return status code `200` on success or `404 Not found` if the branch is not available.
 
+## Protect repository branch
 
-## Protect a project repository branch
-
-Protect a single project repository branch.
+Protects a single project repository branch. This is an idempotent function, protecting an already
+protected repository branch still returns a `200 Ok` status code.
 
 ```
 PUT /projects/:id/repository/branches/:branch/protect
@@ -122,9 +122,11 @@ Parameters:
 }
 ```
 
-## Unprotect a project repository branch
 
-Unprotect a single project repository branch.
+## Unprotect repository branch
+
+Unprotects a single project repository branch. This is an idempotent function, unprotecting an already
+unprotected repository branch still returns a `200 Ok` status code.
 
 ```
 PUT /projects/:id/repository/branches/:branch/unprotect
@@ -162,7 +164,8 @@ Parameters:
 }
 ```
 
-## Project repository tags
+
+## List project repository tags
 
 Get a list of repository tags from a project, sorted by name in reverse alphabetical order.
 
@@ -201,7 +204,8 @@ Parameters:
 ]
 ```
 
-## Project repository commits
+
+## List repository commits
 
 Get a list of repository commits in a project.
 
@@ -212,7 +216,7 @@ GET /projects/:id/repository/commits
 Parameters:
 
 + `id` (required) - The ID of a project
-+ `ref_name` (optional) - The name of a repository branch or tag
++ `ref_name` (optional) - The name of a repository branch or tag or if not given the default branch
 
 ```json
 [
@@ -235,6 +239,57 @@ Parameters:
 ]
 ```
 
+## List repository tree
+
+Get a list of repository files and directories in a project.
+
+```
+GET /projects/:id/repository/tree
+```
+
+Parameters:
+
++ `id` (required) - The ID of a project
++ `path` (optional) - The path inside repository. Used to get contend of subdirectories
++ `ref_name` (optional) - The name of a repository branch or tag or if not given the default branch
+
+```json
+
+[{
+  "name": "assets",
+  "type": "tree",
+  "mode": "040000",
+  "id": "6229c43a7e16fcc7e95f923f8ddadb8281d9c6c6"
+}, {
+  "name": "contexts",
+  "type": "tree",
+  "mode": "040000",
+  "id": "faf1cdf33feadc7973118ca42d35f1e62977e91f"
+}, {
+  "name": "controllers",
+  "type": "tree",
+  "mode": "040000",
+  "id": "95633e8d258bf3dfba3a5268fb8440d263218d74"
+}, {
+  "name": "Rakefile",
+  "type": "blob",
+  "mode": "100644",
+  "id": "35b2f05cbb4566b71b34554cf184a9d0bd9d46d6"
+}, {
+  "name": "VERSION",
+  "type": "blob",
+  "mode": "100644",
+  "id": "803e4a4f3727286c3093c63870c2b6524d30ec4f"
+}, {
+  "name": "config.ru",
+  "type": "blob",
+  "mode": "100644",
+  "id": "dfd2d862237323aa599be31b473d70a8a817943b"
+}]
+
+```
+
+
 ## Raw blob content
 
 Get the raw file contents for a file.
@@ -248,5 +303,3 @@ Parameters:
 + `id` (required) - The ID of a project
 + `sha` (required) - The commit or branch name
 + `filepath` (required) - The path the file
-
-Will return the raw file contents.

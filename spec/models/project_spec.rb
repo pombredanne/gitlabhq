@@ -6,8 +6,8 @@
 #  name                   :string(255)
 #  path                   :string(255)
 #  description            :text
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  created_at             :datetime
+#  updated_at             :datetime
 #  creator_id             :integer
 #  default_branch         :string(255)
 #  issues_enabled         :boolean          default(TRUE), not null
@@ -16,6 +16,11 @@
 #  wiki_enabled           :boolean          default(TRUE), not null
 #  namespace_id           :integer
 #  public                 :boolean          default(FALSE), not null
+#  issues_tracker         :string(255)      default("gitlab"), not null
+#  issues_tracker_id      :string(255)
+#  snippets_enabled       :boolean          default(TRUE), not null
+#  last_activity_at       :datetime
+#  imported               :boolean          default(FALSE), not null
 #
 
 require 'spec_helper'
@@ -32,11 +37,12 @@ describe Project do
     it { should have_many(:milestones).dependent(:destroy) }
     it { should have_many(:users_projects).dependent(:destroy) }
     it { should have_many(:notes).dependent(:destroy) }
-    it { should have_many(:snippets).dependent(:destroy) }
-    it { should have_many(:deploy_keys).dependent(:destroy) }
+    it { should have_many(:snippets).class_name('ProjectSnippet').dependent(:destroy) }
+    it { should have_many(:deploy_keys_projects).dependent(:destroy) }
+    it { should have_many(:deploy_keys) }
     it { should have_many(:hooks).dependent(:destroy) }
-    it { should have_many(:wikis).dependent(:destroy) }
     it { should have_many(:protected_branches).dependent(:destroy) }
+    it { should have_one(:forked_project_link).dependent(:destroy) }
   end
 
   describe "Mass assignment" do
@@ -56,15 +62,12 @@ describe Project do
     it { should ensure_length_of(:path).is_within(0..255) }
     it { should ensure_length_of(:description).is_within(0..2000) }
     it { should validate_presence_of(:creator) }
-    it { should ensure_inclusion_of(:issues_enabled).in_array([true, false]) }
-    it { should ensure_inclusion_of(:wall_enabled).in_array([true, false]) }
-    it { should ensure_inclusion_of(:merge_requests_enabled).in_array([true, false]) }
-    it { should ensure_inclusion_of(:wiki_enabled).in_array([true, false]) }
+    it { should ensure_length_of(:issues_tracker_id).is_within(0..255) }
 
     it "should not allow new projects beyond user limits" do
       project.stub(:creator).and_return(double(can_create_project?: false, projects_limit: 1))
       project.should_not be_valid
-      project.errors[:base].first.should match(/Your own projects limit is 1/)
+      project.errors[:limit_reached].first.should match(/Your own projects limit is 1/)
     end
   end
 
@@ -72,11 +75,8 @@ describe Project do
     it { should respond_to(:url_to_repo) }
     it { should respond_to(:repo_exists?) }
     it { should respond_to(:satellite) }
-    it { should respond_to(:observe_push) }
     it { should respond_to(:update_merge_requests) }
     it { should respond_to(:execute_hooks) }
-    it { should respond_to(:post_receive_data) }
-    it { should respond_to(:trigger_post_receive) }
     it { should respond_to(:transfer) }
     it { should respond_to(:name_with_namespace) }
     it { should respond_to(:namespace_owner) }
@@ -95,6 +95,7 @@ describe Project do
   end
 
   describe "last_activity methods" do
+    before { enable_observers }
     let(:project)    { create(:project) }
     let(:last_event) { double(created_at: Time.now) }
 
@@ -107,8 +108,8 @@ describe Project do
 
     describe 'last_activity_date' do
       it 'returns the creation date of the project\'s last event if present' do
-        project.stub(last_event: last_event)
-        project.last_activity_date.should == last_event.created_at
+        last_activity_event = create(:event, project: project)
+        project.last_activity_at.to_i.should == last_event.created_at.to_i
       end
 
       it 'returns the project\'s last update date if it has no events' do
@@ -118,7 +119,7 @@ describe Project do
   end
 
   describe :update_merge_requests do
-    let(:project) { create(:project) }
+    let(:project) { create(:project_with_code) }
 
     before do
       @merge_request = create(:merge_request, project: project)
@@ -188,9 +189,69 @@ describe Project do
     it "should return valid repo" do
       project.repository.should be_kind_of(Repository)
     end
+  end
 
-    it "should return nil" do
-      Project.new(path: "empty").repository.should be_nil
+  describe :issue_exists? do
+    let(:project) { create(:project) }
+    let(:existed_issue) { create(:issue, project: project) }
+    let(:not_existed_issue) { create(:issue) }
+    let(:ext_project) { create(:redmine_project) }
+
+    it "should be true or if used internal tracker and issue exists" do
+      project.issue_exists?(existed_issue.id).should be_true
     end
+
+    it "should be false or if used internal tracker and issue not exists" do
+      project.issue_exists?(not_existed_issue.id).should be_false
+    end
+
+    it "should always be true if used other tracker" do
+      ext_project.issue_exists?(rand(100)).should be_true
+    end
+  end
+
+  describe :used_default_issues_tracker? do
+    let(:project) { create(:project) }
+    let(:ext_project) { create(:redmine_project) }
+
+    it "should be true if used internal tracker" do
+      project.used_default_issues_tracker?.should be_true
+    end
+
+    it "should be false if used other tracker" do
+      ext_project.used_default_issues_tracker?.should be_false
+    end
+  end
+
+  describe :can_have_issues_tracker_id? do
+    let(:project) { create(:project) }
+    let(:ext_project) { create(:redmine_project) }
+
+    it "should be true for projects with external issues tracker if issues enabled" do
+      ext_project.can_have_issues_tracker_id?.should be_true
+    end
+
+    it "should be false for projects with internal issue tracker if issues enabled" do
+      project.can_have_issues_tracker_id?.should be_false
+    end
+
+    it "should be always false if issues disbled" do
+      project.issues_enabled = false
+      ext_project.issues_enabled = false
+
+      project.can_have_issues_tracker_id?.should be_false
+      ext_project.can_have_issues_tracker_id?.should be_false
+    end
+  end
+
+  describe :open_branches do
+    let(:project) { create(:project_with_code) }
+
+    before do
+      project.protected_branches.create(name: 'master')
+    end
+
+    it { project.open_branches.map(&:name).should include('bootstrap') }
+    it { project.open_branches.map(&:name).should_not include('master') }
   end
 end

@@ -1,3 +1,110 @@
+v 6.0.0
+  - Epic: Replace teams with group membership
+  - Add project filter on dashboard
+  - cache project graph
+  - Drop support of root namespaces
+  - Redesign project settings navigation
+  - Restlyed login screen
+  - Default theme is classic now
+  - Cache result of methods like authorize_projects, project.team.members etc
+  - Remove $.ready events
+  - Fix onclick events being double binded
+  - Add notification level to group membership
+  - Move all project controllers/views under Projects:: module
+  - Move all profile controllers/views under Profiles:: module
+  - Redesign ssh keys page
+  - Generate fingerprint for ssh keys
+  - You an use arrows to navigate at tree view
+  - Apply user project limit only for personal projects
+  - API: Allow login with LDAP credentials
+  - Ability to remove branches/tags with UI
+
+v 5.4.0
+  - Ability to edit own comments
+  - Documentation improvements
+  - Improve dashboard projects page
+  - Fixed nav for empty repos
+  - GitLab Markdown help page
+  - Misspelling fixes
+  - Added support of unicorn and fog gems
+  - Added client list to API doc
+  - Fix PostgreSQL database restoration problem
+  - Increase snippet content column size
+  - allow project import via git:// url
+  - Show participants on issues, including mentions
+  - Notify mentioned users with email
+
+v 5.3.0
+  - Refactored services 
+  - Campfire service added
+  - HipChat service added
+  - Fixed bug with LDAP + git over http
+  - Fixed bug with google analytics code being ignored
+  - Improve sign-in page if ldap enabled
+  - Respect newlines in wall messages
+  - Generate the Rails secret token on first run
+  - Rename repo feature
+  - Init.d: remove gitlab.socket on service start
+  - Api: added teams api
+  - Api: Prevent blob content being escaped
+  - Api: Smart deploy key add behaviour
+  - Api: projets/owned.json return user owned project
+  - Fix bug with team assignation on project from #4109
+  - Advanced snippets: public/private, project/personal (Andrew Kulakov)
+  - Repository Graphs (Karlo Nicholas T. Soriano)
+  - Fix dashboard lost if comment on commit
+  - Update gitlab-grack. Fixes issue with --depth option
+  - Fix project events duplicate on project page
+  - Fix postgres error when displaying network graph.
+  - Fix dashboard event filter when navigate via turbolinks
+  - init.d: Ensure socket is removed before starting service
+  - Admin area: Style teams:index, group:show pages
+  - Own page for failed forking
+  - Scrum view for milestone
+
+v 5.2.0
+  - Turbolinks
+  - Git over http with ldap credentials
+  - Diff with better colors and some spacing on the corners
+  - Default values for project features
+  - Fixed huge_commit view
+  - Restyle project clone panel
+  - Move Gitlab::Git code to gitlab_git gem
+  - Move update docs in repo
+  - Requires gitlab-shell v1.4.0
+  - Fixed submodules listing under file tab
+  - Fork feature (Angus MacArthur)
+  - git version check in gitlab:check
+  - Shared deploy keys feature
+  - Ability to generate default labels set for issues
+  - Improve gfm autocomplete (Harold Luo)
+  - Added support for Google Analytics
+  - Code search feature (Javier Castro)
+
+v 5.1.0
+  - You can login with email or username now
+  - Corrected project transfer rollback when repository cannot be moved
+  - Move both repo and wiki when project transfer requrested
+  - Admin area: project editing was removed from admin namespace
+  - Access: admin user has now access to any project.
+  - Notification settings
+  - Gitlab::Git set of objects to abstract from grit library
+  - Replace Unicorn web server with Puma
+  - Backup/Restore refactored. Backup dump project wiki too now
+  - Restyled Issues list. Show milestone version in issue row
+  - Restyled Merge Request list
+  - Backup now dump/restore uploads
+  - Improved perfomance of dashboard (Andrew Kumanyaev)
+  - File history now tracks renames (Akzhan Abdulin)
+  - Drop wiki migration tools
+  - Drop sqlite migration tools
+  - project tagging
+  - Paginate users in API
+  - Restyled network graph (Hiroyuki Sato)
+
+v 5.0.1
+  - Fixed issue with gitlab-grit being overrided by grit
+
 v 5.0.0
   - Replaced gitolite with gitlab-shell
   - Removed gitolite-related libraries
@@ -14,6 +121,19 @@ v 5.0.0
   - Add validations for Group and Team names
   - Restyle team page for project
   - Update capybara, rspec-rails, poltergeist to recent versions
+  - Wiki on git using Gollum
+  - Added Solarized Dark theme for code review
+  - Dont show user emails in autocomplete lists, profile pages
+  - Added settings tab for group, team, project
+  - Replace user popup with icons in header
+  - Handle project moving with gitlab-shell
+  - Added select2-rails for selectboxes with ajax data load
+  - Fixed search field on projects page
+  - Added teams to search autocomplete
+  - Move groups and teams on dashboard sidebar to sub-tabs
+  - API: improved return codes and docs. (Felix Gilcher, Sebastian Ziebell)
+  - Redesign wall to be more like chat
+  - Snippets, Wall features are disabled by default for new projects
 
 v 4.2.0
   - Teams
@@ -43,7 +163,7 @@ v 4.1.0
   - cleanup rake tasks
   - fix backup/restore
   - scss cleanup
-  - show preview for note images 
+  - show preview for note images
   - improved network-graph
   - get rid of app/roles/
   - added new classes Team, Repository
@@ -57,7 +177,7 @@ v 4.1.0
 v 4.0.0
   - Remove project code and path from API. Use id instead
   - Return valid clonable url to repo for web hook
-  - Fixed backup issue 
+  - Fixed backup issue
   - Reorganized settings
   - Fixed commits compare
   - Refactored scss

@@ -6,6 +6,7 @@
 #
 module Issuable
   extend ActiveSupport::Concern
+  include Mentionable
 
   included do
     belongs_to :project
@@ -21,9 +22,10 @@ module Issuable
     scope :opened, -> { with_state(:opened) }
     scope :closed, -> { with_state(:closed) }
     scope :of_group, ->(group) { where(project_id: group.project_ids) }
-    scope :of_user_team, ->(team) { where(project_id: team.project_ids, assignee_id: team.member_ids) }
-    scope :assigned, ->(u) { where(assignee_id: u.id)}
+    scope :assigned_to, ->(u) { where(assignee_id: u.id)}
     scope :recent, -> { order("created_at DESC") }
+    scope :assigned, -> { where("assignee_id IS NOT NULL") }
+    scope :unassigned, -> { where("assignee_id IS NULL") }
 
     delegate :name,
              :email,
@@ -94,5 +96,19 @@ module Issuable
   # Return the total number of votes
   def votes_count
     upvotes + downvotes
+  end
+
+  # Return all users participating on the discussion
+  def participants
+    users = []
+    users << author
+    users << assignee if is_assigned?
+    mentions = []
+    mentions << self.mentioned_users
+    notes.each do |note|
+      users << note.author
+      mentions << note.mentioned_users
+    end
+    users.concat(mentions.reduce([], :|)).uniq
   end
 end

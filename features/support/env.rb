@@ -1,5 +1,10 @@
 require 'simplecov' unless ENV['CI']
 
+if ENV['TRAVIS']
+  require 'coveralls'
+  Coveralls.wear!
+end
+
 ENV['RAILS_ENV'] = 'test'
 require './config/environment'
 
@@ -9,7 +14,7 @@ require 'spinach/capybara'
 require 'sidekiq/testing/inline'
 
 
-%w(stubbed_repository valid_commit).each do |f|
+%w(valid_commit select2_helper test_env).each do |f|
   require Rails.root.join('spec', 'support', f)
 end
 
@@ -23,17 +28,16 @@ require 'capybara/poltergeist'
 Capybara.javascript_driver = :poltergeist
 Spinach.hooks.on_tag("javascript") do
   ::Capybara.current_driver = ::Capybara.javascript_driver
-  ::Capybara.default_wait_time = 5
 end
-
+Capybara.default_wait_time = 10
+Capybara.ignore_hidden_elements = false
 
 DatabaseCleaner.strategy = :truncation
 
 Spinach.hooks.before_scenario do
-  # Use tmp dir for FS manipulations
-  Gitlab.config.gitlab_shell.stub(repos_path: Rails.root.join('tmp', 'test-git-base-path'))
-  FileUtils.rm_rf Gitlab.config.gitlab_shell.repos_path
-  FileUtils.mkdir_p Gitlab.config.gitlab_shell.repos_path
+  TestEnv.init(mailer: false)
+
+  DatabaseCleaner.start
 end
 
 Spinach.hooks.after_scenario do

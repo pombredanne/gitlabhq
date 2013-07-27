@@ -1,3 +1,5 @@
+ActiveRecord::Base.observers.disable :all
+
 Gitlab::Seeder.quiet do
   (1..300).each  do |i|
     # Random Project
@@ -9,7 +11,7 @@ Gitlab::Seeder.quiet do
     next unless user
 
     user_id = user.id
-    IssueObserver.current_user = user
+    Thread.current[:current_user] = user
 
     Issue.seed(:id, [{
       id: i,

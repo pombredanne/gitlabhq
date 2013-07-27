@@ -7,9 +7,9 @@
 #  project_id  :integer          not null
 #  description :text
 #  due_date    :date
-#  state       :string           default(FALSE), not null
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
+#  state       :string(255)
 #
 
 require 'spec_helper'
@@ -39,7 +39,6 @@ describe Milestone do
     end
 
     it "should count closed issues" do
-      IssueObserver.current_user = issue.author
       issue.close
       milestone.issues << issue
       milestone.percent_complete.should == 100
@@ -134,7 +133,7 @@ describe Milestone do
 
     it 'should be false if milestone active and not all nestied issues closed' do
       issue.milestone = milestone
-      issue.save 
+      issue.save
 
       milestone.can_be_closed?.should be_false
     end

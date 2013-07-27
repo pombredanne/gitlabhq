@@ -9,14 +9,13 @@
 #  author_id     :integer
 #  assignee_id   :integer
 #  title         :string(255)
-#  closed        :boolean          default(FALSE), not null
-#  created_at    :datetime         not null
-#  updated_at    :datetime         not null
+#  created_at    :datetime
+#  updated_at    :datetime
 #  st_commits    :text(2147483647)
 #  st_diffs      :text(2147483647)
-#  merged        :boolean          default(FALSE), not null
-#  merge_status  :integer          default(1), not null
 #  milestone_id  :integer
+#  state         :string(255)
+#  merge_status  :string(255)
 #
 
 require 'spec_helper'
@@ -30,6 +29,12 @@ describe MergeRequest do
   describe "Mass assignment" do
     it { should_not allow_mass_assignment_of(:author_id) }
     it { should_not allow_mass_assignment_of(:project_id) }
+  end
+
+  describe "Respond to" do
+    it { should respond_to(:unchecked?) }
+    it { should respond_to(:can_be_merged?) }
+    it { should respond_to(:cannot_be_merged?) }
   end
 
   describe 'modules' do

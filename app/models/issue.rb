@@ -7,13 +7,13 @@
 #  assignee_id  :integer
 #  author_id    :integer
 #  project_id   :integer
-#  created_at   :datetime         not null
-#  updated_at   :datetime         not null
-#  state        :string           default(FALSE), not null
+#  created_at   :datetime
+#  updated_at   :datetime
 #  position     :integer          default(0)
 #  branch_name  :string(255)
 #  description  :text
 #  milestone_id :integer
+#  state        :string(255)
 #
 
 class Issue < ActiveRecord::Base
@@ -25,15 +25,9 @@ class Issue < ActiveRecord::Base
 
   acts_as_taggable_on :labels
 
-  class << self
-    def cared(user)
-      where('assignee_id = :user', user: user.id)
-    end
-
-    def open_for(user)
-      opened.assigned(user)
-    end
-  end
+  scope :cared, ->(user) { where(assignee_id: user) }
+  scope :authored, ->(user) { where(author_id: user) }
+  scope :open_for, ->(user) { opened.assigned_to(user) }
 
   state_machine :state, initial: :opened do
     event :close do
@@ -50,4 +44,7 @@ class Issue < ActiveRecord::Base
 
     state :closed
   end
+
+  # Both open and reopened issues should be listed as opened
+  scope :opened, -> { with_state(:opened, :reopened) }
 end

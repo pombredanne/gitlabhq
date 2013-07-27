@@ -54,6 +54,27 @@ class Event < ActiveRecord::Base
         Event::COMMENTED
       end
     end
+
+    def create_ref_event(project, user, ref, action = 'add', prefix = 'refs/heads')
+      if action.to_s == 'add'
+        before = '00000000'
+        after = ref.commit.id
+      else
+        before = ref.commit.id
+        after = '00000000'
+      end
+
+      Event.create(
+        project: project,
+        action: Event::PUSHED,
+        data: {
+          ref: "#{prefix}/#{ref.name}",
+          before: before,
+          after: after
+        },
+        author_id: user.id
+      )
+    end
   end
 
   def proper?
@@ -68,14 +89,16 @@ class Event < ActiveRecord::Base
 
   def project_name
     if project
-      project.name
+      project.name_with_namespace
     else
       "(deleted project)"
     end
   end
 
   def target_title
-    target.try :title
+    if target && target.respond_to?(:title)
+      target.title
+    end
   end
 
   def push?
@@ -134,7 +157,7 @@ class Event < ActiveRecord::Base
     if closed?
       "closed"
     elsif merged?
-      "merged"
+      "accepted"
     elsif joined?
       'joined'
     elsif left?
@@ -200,7 +223,7 @@ class Event < ActiveRecord::Base
 
   # Max 20 commits from push DESC
   def commits
-    @commits ||= data[:commits].map { |commit| repository.commit(commit[:id]) }.reverse
+    @commits ||= data[:commits].reverse
   end
 
   def commits_count
@@ -221,26 +244,8 @@ class Event < ActiveRecord::Base
     end
   end
 
-  def repository
-    project.repository
-  end
-
-  def parent_commit
-    repository.commit(commit_from)
-  rescue => ex
-    nil
-  end
-
-  def last_commit
-    repository.commit(commit_to)
-  rescue => ex
-    nil
-  end
-
   def push_with_commits?
-    md_ref? && commits.any? && parent_commit && last_commit
-  rescue Grit::NoSuchPathError
-    false
+    md_ref? && commits.any? && commit_from && commit_to
   end
 
   def last_push_to_non_root?
@@ -257,6 +262,10 @@ class Event < ActiveRecord::Base
 
   def note_commit?
     target.noteable_type == "Commit"
+  end
+
+  def note_project_snippet?
+    target.noteable_type == "Snippet"
   end
 
   def note_target

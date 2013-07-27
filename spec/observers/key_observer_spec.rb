@@ -2,20 +2,15 @@ require 'spec_helper'
 
 describe KeyObserver do
   before do
-    @key = double('Key',
-      shell_id: 'key-32',
-      key: '== a vaild ssh key',
-      projects: [],
-      is_deploy_key: false
-    )
+    @key = create(:personal_key)
 
     @observer = KeyObserver.instance
   end
 
-  context :after_save do
+  context :after_create do
     it do
       GitlabShellWorker.should_receive(:perform_async).with(:add_key, @key.shell_id, @key.key)
-      @observer.after_save(@key)
+      @observer.after_create(@key)
     end
   end
 

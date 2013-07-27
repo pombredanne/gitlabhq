@@ -4,7 +4,7 @@ require 'rails/all'
 
 if defined?(Bundler)
   # If you precompile assets before deploying to production, use this line
-  # Bundler.require(*Rails.groups(:assets => %w(development test)))
+  # Bundler.require(*Rails.groups(assets: %w(development test)))
   # If you want your assets lazily compiled in production, use this line
   Bundler.require(:default, :assets, Rails.env)
 end
@@ -24,6 +24,7 @@ module Gitlab
 
     # Activate observers that should always be running.
     config.active_record.observers = :activity_observer,
+                                     :project_activity_cache_observer,
                                      :issue_observer,
                                      :key_observer,
                                      :merge_request_observer,

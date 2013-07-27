@@ -5,8 +5,8 @@
 #  id         :integer          not null, primary key
 #  url        :string(255)
 #  project_id :integer
-#  created_at :datetime         not null
-#  updated_at :datetime         not null
+#  created_at :datetime
+#  updated_at :datetime
 #  type       :string(255)      default("ProjectHook")
 #  service_id :integer
 #
@@ -28,10 +28,14 @@ class WebHook < ActiveRecord::Base
       WebHook.post(url, body: data.to_json, headers: { "Content-Type" => "application/json" })
     else
       post_url = url.gsub("#{parsed_url.userinfo}@", "")
+      auth = {
+        username: URI.decode(parsed_url.user),
+        password: URI.decode(parsed_url.password),
+      }
       WebHook.post(post_url,
                    body: data.to_json,
                    headers: {"Content-Type" => "application/json"},
-                   basic_auth: {username: parsed_url.user, password: parsed_url.password})
+                   basic_auth: auth)
     end
   end
 

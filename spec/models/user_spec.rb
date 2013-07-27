@@ -4,7 +4,7 @@
 #
 #  id                     :integer          not null, primary key
 #  email                  :string(255)      default(""), not null
-#  encrypted_password     :string(255)      default(""), not null
+#  encrypted_password     :string(128)      default(""), not null
 #  reset_password_token   :string(255)
 #  reset_password_sent_at :datetime
 #  remember_created_at    :datetime
@@ -13,8 +13,8 @@
 #  last_sign_in_at        :datetime
 #  current_sign_in_ip     :string(255)
 #  last_sign_in_ip        :string(255)
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  created_at             :datetime
+#  updated_at             :datetime
 #  name                   :string(255)
 #  admin                  :boolean          default(FALSE), not null
 #  projects_limit         :integer          default(10)
@@ -22,10 +22,8 @@
 #  linkedin               :string(255)      default(""), not null
 #  twitter                :string(255)      default(""), not null
 #  authentication_token   :string(255)
-#  dark_scheme            :boolean          default(FALSE), not null
 #  theme_id               :integer          default(1), not null
 #  bio                    :string(255)
-#  blocked                :boolean          default(FALSE), not null
 #  failed_attempts        :integer          default(0)
 #  locked_at              :datetime
 #  extern_uid             :string(255)
@@ -33,6 +31,11 @@
 #  username               :string(255)
 #  can_create_group       :boolean          default(TRUE), not null
 #  can_create_team        :boolean          default(TRUE), not null
+#  state                  :string(255)
+#  color_scheme_id        :integer          default(1), not null
+#  notification_level     :integer          default(1), not null
+#  password_expires_at    :datetime
+#  created_by_id          :integer
 #
 
 require 'spec_helper'
@@ -40,6 +43,7 @@ require 'spec_helper'
 describe User do
   describe "Associations" do
     it { should have_one(:namespace) }
+    it { should have_many(:snippets).class_name('Snippet').dependent(:destroy) }
     it { should have_many(:users_projects).dependent(:destroy) }
     it { should have_many(:groups) }
     it { should have_many(:keys).dependent(:destroy) }
@@ -69,26 +73,8 @@ describe User do
 
   describe "Respond to" do
     it { should respond_to(:is_admin?) }
-    it { should respond_to(:identifier) }
     it { should respond_to(:name) }
     it { should respond_to(:private_token) }
-  end
-
-  describe '#identifier' do
-    it "should return valid identifier" do
-      user = build(:user, email: "test@mail.com")
-      user.identifier.should == "test_mail_com"
-    end
-
-    it "should return identifier without + sign" do
-      user = build(:user, email: "test+foo@mail.com")
-      user.identifier.should == "test_foo_mail_com"
-    end
-
-    it "should conform to Gitolite's required identifier pattern" do
-      user = build(:user, email: "_test@example.com")
-      user.identifier.should == 'test_example_com'
-    end
   end
 
   describe '#generate_password' do
@@ -122,11 +108,22 @@ describe User do
       ActiveRecord::Base.observers.enable(:user_observer)
       @user = create :user
       @project = create :project, namespace: @user.namespace
+      @project_2 = create :project, group: create(:group) # Grant MASTER access to the user
+      @project_3 = create :project, group: create(:group) # Grant DEVELOPER access to the user
+
+      @project_2.team << [@user, :master]
+      @project_3.team << [@user, :developer]
     end
 
     it { @user.authorized_projects.should include(@project) }
+    it { @user.authorized_projects.should include(@project_2) }
+    it { @user.authorized_projects.should include(@project_3) }
     it { @user.owned_projects.should include(@project) }
+    it { @user.owned_projects.should_not include(@project_2) }
+    it { @user.owned_projects.should_not include(@project_3) }
     it { @user.personal_projects.should include(@project) }
+    it { @user.personal_projects.should_not include(@project_2) }
+    it { @user.personal_projects.should_not include(@project_3) }
   end
 
   describe 'groups' do
@@ -137,7 +134,7 @@ describe User do
     end
 
     it { @user.several_namespaces?.should be_true }
-    it { @user.namespaces.should == [@user.namespace, @group] }
+    it { @user.namespaces.should include(@user.namespace, @group) }
     it { @user.authorized_groups.should == [@group] }
     it { @user.owned_groups.should == [@group] }
   end
@@ -158,7 +155,7 @@ describe User do
 
     it "should block user" do
       user.block
-      user.blocked.should be_true
+      user.blocked?.should be_true
     end
   end
 
@@ -167,13 +164,13 @@ describe User do
       User.delete_all
       @user = create :user
       @admin = create :user, admin: true
-      @blocked = create :user, blocked: true
+      @blocked = create :user, state: :blocked
     end
 
     it { User.filter("admins").should == [@admin] }
     it { User.filter("blocked").should == [@blocked] }
-    it { User.filter("wop").should == [@user, @admin, @blocked] }
-    it { User.filter(nil).should == [@user, @admin] }
+    it { User.filter("wop").should include(@user, @admin, @blocked) }
+    it { User.filter(nil).should include(@user, @admin) }
   end
 
   describe :not_in_project do
@@ -183,7 +180,7 @@ describe User do
       @project = create :project
     end
 
-    it { User.not_in_project(@project).should == [@user, @project.owner] }
+    it { User.not_in_project(@project).should include(@user, @project.owner) }
   end
 
   describe 'normal user' do
@@ -194,5 +191,23 @@ describe User do
     it { user.can_create_group?.should be_true }
     it { user.can_create_project?.should be_true }
     it { user.first_name.should == 'John' }
+  end
+
+  describe 'without defaults' do
+    let(:user) { User.new }
+    it "should not apply defaults to user" do
+      user.projects_limit.should == 10
+      user.can_create_group.should == true
+      user.can_create_team.should == true
+    end
+  end
+
+  describe 'with defaults' do
+    let(:user) { User.new.with_defaults }
+    it "should apply defaults to user" do
+      user.projects_limit.should == 42
+      user.can_create_group.should == false
+      user.can_create_team.should == false
+    end
   end
 end

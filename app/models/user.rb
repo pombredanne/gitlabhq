@@ -4,7 +4,7 @@
 #
 #  id                     :integer          not null, primary key
 #  email                  :string(255)      default(""), not null
-#  encrypted_password     :string(255)      default(""), not null
+#  encrypted_password     :string(128)      default(""), not null
 #  reset_password_token   :string(255)
 #  reset_password_sent_at :datetime
 #  remember_created_at    :datetime
@@ -13,8 +13,8 @@
 #  last_sign_in_at        :datetime
 #  current_sign_in_ip     :string(255)
 #  last_sign_in_ip        :string(255)
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
+#  created_at             :datetime
+#  updated_at             :datetime
 #  name                   :string(255)
 #  admin                  :boolean          default(FALSE), not null
 #  projects_limit         :integer          default(10)
@@ -22,10 +22,8 @@
 #  linkedin               :string(255)      default(""), not null
 #  twitter                :string(255)      default(""), not null
 #  authentication_token   :string(255)
-#  dark_scheme            :boolean          default(FALSE), not null
 #  theme_id               :integer          default(1), not null
 #  bio                    :string(255)
-#  blocked                :boolean          default(FALSE), not null
 #  failed_attempts        :integer          default(0)
 #  locked_at              :datetime
 #  extern_uid             :string(255)
@@ -33,6 +31,11 @@
 #  username               :string(255)
 #  can_create_group       :boolean          default(TRUE), not null
 #  can_create_team        :boolean          default(TRUE), not null
+#  state                  :string(255)
+#  color_scheme_id        :integer          default(1), not null
+#  notification_level     :integer          default(1), not null
+#  password_expires_at    :datetime
+#  created_by_id          :integer
 #
 
 class User < ActiveRecord::Base
@@ -40,65 +43,128 @@ class User < ActiveRecord::Base
          :recoverable, :rememberable, :trackable, :validatable, :omniauthable, :registerable
 
   attr_accessible :email, :password, :password_confirmation, :remember_me, :bio, :name, :username,
-                  :skype, :linkedin, :twitter, :dark_scheme, :theme_id, :force_random_password,
-                  :extern_uid, :provider, as: [:default, :admin]
-  attr_accessible :projects_limit, :can_create_team, :can_create_group, as: :admin
+                  :skype, :linkedin, :twitter, :color_scheme_id, :theme_id, :force_random_password,
+                  :extern_uid, :provider, :password_expires_at,
+                  as: [:default, :admin]
+
+  attr_accessible :projects_limit, :can_create_team, :can_create_group,
+                  as: :admin
 
   attr_accessor :force_random_password
 
-  # Namespace for personal projects
-  has_one :namespace,                 dependent: :destroy, foreign_key: :owner_id,    class_name: "Namespace", conditions: 'type IS NULL'
+  # Virtual attribute for authenticating by either username or email
+  attr_accessor :login
 
-  has_many :keys,                     dependent: :destroy
+  # Add login to attr_accessible
+  attr_accessible :login
+
+
+  #
+  # Relations
+  #
+
+  # Namespace for personal projects
+  has_one :namespace, dependent: :destroy, foreign_key: :owner_id, class_name: "Namespace", conditions: 'type IS NULL'
+
+  # Namespaces (owned groups and own namespace)
+  has_many :namespaces, foreign_key: :owner_id
+
+  # Profile
+  has_many :keys, dependent: :destroy
+
+  # Groups
+  has_many :own_groups, class_name: "Group", foreign_key: :owner_id
+  has_many :owned_groups, through: :users_groups, source: :group, conditions: { users_groups: { group_access: UsersGroup::OWNER } }
+
+  has_many :users_groups, dependent: :destroy
+  has_many :groups, through: :users_groups
+
+  # Projects
+  has_many :snippets,                 dependent: :destroy, foreign_key: :author_id, class_name: "Snippet"
   has_many :users_projects,           dependent: :destroy
   has_many :issues,                   dependent: :destroy, foreign_key: :author_id
   has_many :notes,                    dependent: :destroy, foreign_key: :author_id
   has_many :merge_requests,           dependent: :destroy, foreign_key: :author_id
   has_many :events,                   dependent: :destroy, foreign_key: :author_id,   class_name: "Event"
+  has_many :recent_events,                                 foreign_key: :author_id,   class_name: "Event", order: "id DESC"
   has_many :assigned_issues,          dependent: :destroy, foreign_key: :assignee_id, class_name: "Issue"
   has_many :assigned_merge_requests,  dependent: :destroy, foreign_key: :assignee_id, class_name: "MergeRequest"
 
-  has_many :groups,         class_name: "Group", foreign_key: :owner_id
-  has_many :recent_events,  class_name: "Event", foreign_key: :author_id, order: "id DESC"
+  has_many :groups_projects,          through: :groups, source: :projects
+  has_many :personal_projects,        through: :namespace, source: :projects
+  has_many :projects,                 through: :users_projects
+  has_many :own_projects,             foreign_key: :creator_id, class_name: 'Project'
+  has_many :owned_projects,           through: :namespaces, source: :projects
 
-  has_many :projects,       through: :users_projects
-
-  has_many :user_team_user_relationships, dependent: :destroy
-
-  has_many :user_teams,                      through: :user_team_user_relationships
-  has_many :user_team_project_relationships, through: :user_teams
-  has_many :team_projects,                   through: :user_team_project_relationships
-
+  #
+  # Validations
+  #
   validates :name, presence: true
+  validates :email, presence: true, format: { with: /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\Z/ }
   validates :bio, length: { within: 0..255 }
   validates :extern_uid, allow_blank: true, uniqueness: {scope: :provider}
   validates :projects_limit, presence: true, numericality: {greater_than_or_equal_to: 0}
   validates :username, presence: true, uniqueness: true,
+            exclusion: { in: Gitlab::Blacklist.path },
             format: { with: Gitlab::Regex.username_regex,
                       message: "only letters, digits & '_' '-' '.' allowed. Letter should be first" }
 
+  validates :notification_level, inclusion: { in: Notification.notification_levels }, presence: true
 
   validate :namespace_uniq, if: ->(user) { user.username_changed? }
 
   before_validation :generate_password, on: :create
+  before_validation :sanitize_attrs
+
   before_save :ensure_authentication_token
+
   alias_attribute :private_token, :authentication_token
 
   delegate :path, to: :namespace, allow_nil: true, prefix: true
 
+  state_machine :state, initial: :active do
+    after_transition any => :blocked do |user, transition|
+      # Remove user from all projects and
+      user.users_projects.find_each do |membership|
+        return false unless membership.destroy
+      end
+    end
+
+    event :block do
+      transition active: :blocked
+    end
+
+    event :activate do
+      transition blocked: :active
+    end
+  end
+
   # Scopes
   scope :admins, -> { where(admin:  true) }
-  scope :blocked, -> { where(blocked:  true) }
-  scope :active, -> { where(blocked:  false) }
+  scope :blocked, -> { with_state(:blocked) }
+  scope :active, -> { with_state(:active) }
   scope :alphabetically, -> { order('name ASC') }
   scope :in_team, ->(team){ where(id: team.member_ids) }
   scope :not_in_team, ->(team){ where('users.id NOT IN (:ids)', ids: team.member_ids) }
+  scope :not_in_project, ->(project) { project.users.present? ? where("id not in (:ids)", ids: project.users.map(&:id) ) : scoped }
+  scope :without_projects, -> { where('id NOT IN (SELECT DISTINCT(user_id) FROM users_projects)') }
+
   scope :potential_team_members, ->(team) { team.members.any? ? active.not_in_team(team) : active  }
 
   #
   # Class methods
   #
   class << self
+    # Devise method overriden to allow sing in with email or username
+    def find_for_database_authentication(warden_conditions)
+      conditions = warden_conditions.dup
+      if login = conditions.delete(:login)
+        where(conditions).where(["lower(username) = :value OR lower(email) = :value", { value: login.downcase }]).first
+      else
+        where(conditions).first
+      end
+    end
+
     def filter filter_name
       case filter_name
       when "admins"; self.admins
@@ -107,18 +173,6 @@ class User < ActiveRecord::Base
       else
         self.active
       end
-    end
-
-    def not_in_project(project)
-      if project.users.present?
-        where("id not in (:ids)", ids: project.users.map(&:id) )
-      else
-        scoped
-      end
-    end
-
-    def without_projects
-      where('id NOT IN (SELECT DISTINCT(user_id) FROM users_projects)')
     end
 
     def create_from_omniauth(auth, ldap = false)
@@ -150,6 +204,19 @@ class User < ActiveRecord::Base
     username
   end
 
+  def with_defaults
+    tap do |u|
+      u.projects_limit = Gitlab.config.gitlab.default_projects_limit
+      u.can_create_group = Gitlab.config.gitlab.default_can_create_group
+      u.can_create_team = Gitlab.config.gitlab.default_can_create_team
+      u.theme_id = Gitlab::Theme::MARS
+    end
+  end
+
+  def notification
+    @notification ||= Notification.new(self)
+  end
+
   def generate_password
     if self.force_random_password
       self.password = self.password_confirmation = Devise.friendly_token.first(8)
@@ -163,67 +230,26 @@ class User < ActiveRecord::Base
     end
   end
 
-  # Namespaces user has access to
-  def namespaces
-    namespaces = []
-
-    # Add user account namespace
-    namespaces << self.namespace if self.namespace
-
-    # Add groups you can manage
-    namespaces += groups.all
-
-    namespaces
-  end
-
-  # Groups where user is an owner
-  def owned_groups
-    groups
-  end
-
   # Groups user has access to
   def authorized_groups
     @authorized_groups ||= begin
-                           groups = Group.where(id: self.authorized_projects.pluck(:namespace_id)).all
-                           groups = groups + self.groups
-                           groups.uniq
-                         end
+                             group_ids = (groups.pluck(:id) + own_groups.pluck(:id) + authorized_projects.pluck(:namespace_id))
+                             Group.where(id: group_ids).order('namespaces.name ASC')
+                           end
   end
 
 
   # Projects user has access to
   def authorized_projects
-    project_ids = users_projects.pluck(:project_id)
-    project_ids = project_ids | owned_projects.pluck(:id)
-    Project.where(id: project_ids)
-  end
-
-  # Projects in user namespace
-  def personal_projects
-    Project.personal(self)
-  end
-
-  # Projects where user is an owner
-  def owned_projects
-    Project.where("(projects.namespace_id IN (:namespaces)) OR
-                  (projects.namespace_id IS NULL AND projects.creator_id = :user_id)",
-                  namespaces: namespaces.map(&:id), user_id: self.id)
+    @authorized_projects ||= begin
+                               project_ids = (owned_projects.pluck(:id) + groups_projects.pluck(:id) + projects.pluck(:id)).uniq
+                               Project.where(id: project_ids).joins(:namespace).order('namespaces.name ASC')
+                             end
   end
 
   # Team membership in authorized projects
   def tm_in_authorized_projects
-    UsersProject.where(project_id:  authorized_projects.map(&:id), user_id: self.id)
-  end
-
-  # Returns a string for use as a Gitolite user identifier
-  #
-  # Note that Gitolite 2.x requires the following pattern for users:
-  #
-  #   ^@?[0-9a-zA-Z][0-9a-zA-Z._\@+-]*$
-  def identifier
-    # Replace non-word chars with underscores, then make sure it starts with
-    # valid chars
-    email.gsub(/\W/, '_').gsub(/\A([\W\_])+/, '')
+    UsersProject.where(project_id: authorized_projects.map(&:id), user_id: self.id)
   end
 
   def is_admin?
@@ -239,7 +265,7 @@ class User < ActiveRecord::Base
   end
 
   def can_create_project?
-    projects_limit > owned_projects.count
+    projects_limit_left > 0
   end
 
   def can_create_group?
@@ -270,15 +296,8 @@ class User < ActiveRecord::Base
     MergeRequest.cared(self)
   end
 
-  # Remove user from all projects and
-  # set blocked attribute to true
-  def block
-    users_projects.find_each do |membership|
-      return false unless membership.destroy
-    end
-
-    self.blocked = true
-    save
+  def projects_limit_left
+    projects_limit - personal_projects.count
   end
 
   def projects_limit_percent
@@ -300,25 +319,51 @@ class User < ActiveRecord::Base
   end
 
   def several_namespaces?
-    namespaces.size > 1
+    namespaces.many?
   end
 
   def namespace_id
     namespace.try :id
   end
 
-  def authorized_teams
-    @authorized_teams ||= begin
-                            ids = []
-                            ids << UserTeam.with_member(self).pluck('user_teams.id')
-                            ids << UserTeam.created_by(self).pluck('user_teams.id')
-                            ids.flatten
-
-                            UserTeam.where(id: ids)
-                          end
+  def name_with_username
+    "#{name} (#{username})"
   end
 
-  def owned_teams
-    UserTeam.where(owner_id: self.id)
+  def tm_of(project)
+    project.team_member_by_id(self.id)
+  end
+
+  def already_forked? project
+    !!fork_of(project)
+  end
+
+  def fork_of project
+    links = ForkedProjectLink.where(forked_from_project_id: project, forked_to_project_id: personal_projects)
+
+    if links.any?
+      links.first.forked_to_project
+    else
+      nil
+    end
+  end
+
+  def ldap_user?
+    extern_uid && provider == 'ldap'
+  end
+
+  def accessible_deploy_keys
+    DeployKey.in_projects(self.authorized_projects).uniq
+  end
+
+  def created_by
+    User.find_by_id(created_by_id) if created_by_id
+  end
+
+  def sanitize_attrs
+    %w(name username skype linkedin twitter bio).each do |attr|
+      value = self.send(attr)
+      self.send("#{attr}=", Sanitize.clean(value)) if value.present?
+    end
   end
 end

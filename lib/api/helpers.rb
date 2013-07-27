@@ -1,16 +1,16 @@
-module Gitlab
+module API
   module APIHelpers
     def current_user
       @current_user ||= User.find_by_authentication_token(params[:private_token] || env["HTTP_PRIVATE_TOKEN"])
     end
 
     def user_project
-      @project ||= find_project
+      @project ||= find_project(params[:id])
       @project || not_found!
     end
 
-    def find_project
-      project = Project.find_by_id(params[:id]) || Project.find_with_namespace(params[:id])
+    def find_project(id)
+      project = Project.find_by_id(id) || Project.find_with_namespace(id)
 
       if project && can?(current_user, :read_project, project)
         project
@@ -41,6 +41,17 @@ module Gitlab
       abilities.allowed?(object, action, subject)
     end
 
+    # Checks the occurrences of required attributes, each attribute must be present in the params hash
+    # or a Bad Request error is invoked.
+    #
+    # Parameters:
+    #   keys (required) - A hash consisting of keys that must be present
+    def required_attributes!(keys)
+      keys.each do |key|
+        bad_request!(key) unless params[key].present?
+      end
+    end
+
     def attributes_for_keys(keys)
       attrs = {}
       keys.each do |key|
@@ -53,6 +64,12 @@ module Gitlab
 
     def forbidden!
       render_api_error!('403 Forbidden', 403)
+    end
+
+    def bad_request!(attribute)
+      message = ["400 (Bad request)"]
+      message << "\"" + attribute.to_s + "\" not given"
+      render_api_error!(message.join(' '), 400)
     end
 
     def not_found!(resource = nil)
