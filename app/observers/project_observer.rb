@@ -1,5 +1,7 @@
-class ProjectObserver < ActiveRecord::Observer
+class ProjectObserver < BaseObserver
   def after_create(project)
+    return true if project.forked? || project.imported?
+
     GitlabShellWorker.perform_async(
       :add_repository,
       project.path_with_namespace
@@ -10,6 +12,17 @@ class ProjectObserver < ActiveRecord::Observer
 
   def after_update(project)
     project.send_move_instructions if project.namespace_id_changed?
+    project.rename_repo if project.path_changed?
+
+    GitlabShellWorker.perform_async(
+      :update_repository_head,
+      project.path_with_namespace,
+      project.default_branch
+    ) if project.default_branch_changed?
+  end
+
+  def before_destroy(project)
+    project.repository.expire_cache unless project.empty_repo?
   end
 
   def after_destroy(project)
@@ -18,14 +31,13 @@ class ProjectObserver < ActiveRecord::Observer
       project.path_with_namespace
     )
 
+    GitlabShellWorker.perform_async(
+      :remove_repository,
+      project.path_with_namespace + ".wiki"
+    )
+
     project.satellite.destroy
 
     log_info("Project \"#{project.name}\" was removed")
-  end
-
-  protected
-
-  def log_info message
-    Gitlab::AppLogger.info message
   end
 end

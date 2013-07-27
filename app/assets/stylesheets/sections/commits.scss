@@ -99,11 +99,24 @@
         }
       }
     }
+    .line_holder {
+      &.old .old_line,
+      &.old .new_line {
+        background: #FCC;
+        border-color: #E7BABA;
+      }
+      &.new .old_line,
+      &.new .new_line {
+        background: #CFC;
+        border-color: #B9ECB9;
+      }
+    }
     .line_content {
+      display: block;
       white-space: pre;
-      height: 14px;
+      height: 18px;
       margin: 0px;
-      padding: 0px;
+      padding: 0px 0.5em;
       border: none;
       &.new {
         background: #CFD;
@@ -347,7 +360,7 @@
 
   .notes_count {
     float: right;
-    margin: -6px 8px 6px;
+    margin-right: 10px;
   }
 
   code {
@@ -368,19 +381,25 @@
 }
 
 .file-stats {
-  .new-file{
-    i{
+  .new-file {
+    a {
+      color: #090;
+    }
+    i {
       color: #1BCF00;
     }
   }
-  .renamed-file{
-    i{
+  .renamed-file {
+    i {
       color: #FE9300;
     }
   }
-  .deleted-file{
-    i{
-      color: #FF0000;
+  .deleted-file {
+    a {
+      color: #B00;
+    }
+    i {
+      color: #EE0000;
     }
   }
   .edit-file{
@@ -411,4 +430,44 @@
   @include border-radius(4px);
   padding: 4px;
   background-color: #EEE;
+}
+
+.commit-description {
+  background: none;
+  border: none;
+  margin: 0;
+}
+
+.ui-box.commit-box {
+  margin-top: 0;
+
+  .commit-committer-link,
+  .commit-author-link {
+    color: #333;
+    font-weight: bold;
+    text-shadow: 0 1px 1px #FFF;
+  }
+}
+
+.commit-stat-summary {
+  color: #666;
+  line-height: 2;
+}
+
+li.commit {
+  .avatar {
+    width: 24px;
+    top:-5px;
+    margin-right: 5px;
+    margin-left: 10px;
+  }
+
+  code {
+    padding: 2px 2px 0;
+    margin-top: -2px;
+    &:hover {
+      color: black;
+      border: 1px solid #ccc;
+    }
+  }
 }

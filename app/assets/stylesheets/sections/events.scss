@@ -31,32 +31,44 @@
  *
  */
 .event-item {
+  &:first-child {
+    padding-top: 0;
+  }
+
   border-bottom: 1px solid #eee;
   .event-title {
     color: #333;
     font-weight: bold;
+    font-size: 14px;
     .author_name {
       color: #333;
     }
   }
   .event-body {
+    margin-left: 35px;
+
     .commit p {
-      color: #555;
+      color: #666;
       padding-top: 5px;
     }
     .event-info {
       color: #666;
     }
     .event-note {
-      padding-top: 5px;
-      padding-left: 5px;
-      display: inline-block;
       color: #555;
+      margin-top: 5px;
+
+      pre {
+        border: none;
+        background: #f9f9f9;
+        border-radius: 0;
+        color: #555;
+        margin: 0 20px;
+      }
 
       .note-file-attach {
-        margin-left: -25px;
-        float: left;
         .note-image-attach {
+          margin-top: 4px;
           margin-left: 0px;
           max-width: 200px;
         }
@@ -66,13 +78,9 @@
       color: #777;
       float: left;
       font-size: 16px;
-      line-height: 18px;
-      margin: 5px;
+      line-height: 16px;
+      margin-right: 5px;
     }
-  }
-  .avatar {
-    position: relative;
-    top: -3px;
   }
   .event_icon {
     position: relative;
@@ -88,15 +96,14 @@
     }
   }
   ul {
-    margin-left: 50px;
     margin-bottom: 5px;
     .avatar {
       width: 18px;
-      margin-top: 3px;
+      margin: 2px 4px;
     }
   }
 
-  padding: 16px 5px;
+  padding: 14px 0px;
   &:last-child { border:none }
 
   .event_commits {
@@ -111,33 +118,14 @@
       }
       &.commits-stat {
         display: block;
-        margin-top: 5px;
+        padding: 3px;
+        margin-top: 3px;
+
+        &:hover {
+          background: none;
+        }
       }
     }
-  }
-}
-
-/**
- * Push event widget
- *
- */
-.event_lp {
-  color: #777;
-  padding: 10px;
-  min-height: 22px;
-  border-left: 5px solid #5AB9C3;
-  margin-bottom: 20px;
-  background: #f9f9f9;
-
-  .avatar {
-    width: 24px;
-  }
-
-  .btn-new-mr {
-    @extend .btn-info;
-    @extend .small;
-    @extend .pull-right;
-    margin: -3px;
   }
 }
 
@@ -153,7 +141,7 @@
   .filter_icon {
     a {
       text-align:center;
-      border-left: 3px solid #29B;
+      border-left: 3px solid $primary_color;
       background: #f9f9f9;
       margin-bottom: 10px;
       float: left;

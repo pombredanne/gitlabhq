@@ -24,7 +24,7 @@
       = label_tag do
         .prev.gray
         = f.radio_button :theme_id, 4
-        SlateGray
+        Gray
 
       = label_tag do
         .prev.violet
@@ -40,13 +40,9 @@
         %i.icon-ok
         Saved
     .code_highlight_opts
-      = label_tag do
-        .prev
-          = image_tag "white.png"
-        = f.radio_button :dark_scheme, false
-        White code preview
-      = label_tag do
-        .prev
-          = image_tag "dark.png"
-        = f.radio_button :dark_scheme, true
-        Dark code preview
+      - color_schemes.each do |color_scheme_id, color_scheme|
+        = label_tag do
+          .prev
+            = image_tag "#{color_scheme}-scheme-preview.png"
+          = f.radio_button :color_scheme_id, color_scheme_id
+          = color_scheme.gsub(/[-_]+/, ' ').humanize

@@ -16,11 +16,18 @@
       padding: 12px;
     }
     > .active > a {
-      border-color: #29B;
+      border-color: $primary_color;
       border-radius: 0;
       background: #F1F1F1;
       color: $style_color;
       font-weight: bold;
+    }
+
+    &.nav-stacked-menu {
+      background: #FAFAFA;
+      li > a {
+        padding: 20px;
+      }
     }
   }
 }
@@ -57,9 +64,21 @@
         border-color: #CCC;
         border-bottom: 1px solid #fff;
         color: #333;
+        font-weight: bold;
       }
     }
   }
 
   &.nav-small-tabs > li > a { padding: 6px 9px; }
+}
+
+
+
+/**
+ * fix to keep tooltips position in top navigation bar
+ *
+ */
+.navbar .nav > li {
+  position: relative;
+  white-space: nowrap;
 }

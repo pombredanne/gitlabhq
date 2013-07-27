@@ -12,6 +12,13 @@ class RegistrationsController < Devise::RegistrationsController
     end
   end
 
+  protected
+
+  def build_resource(hash=nil)
+    super
+    self.resource.with_defaults
+  end
+
   private
 
   def signup_enabled?

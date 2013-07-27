@@ -1,18 +1,17 @@
-= render "project_head"
 = render 'clone_panel'
 
 %div.git-empty
   %fieldset
     %legend Git global setup:
     %pre.dark
-      = preserve do
+      :preserve
         git config --global user.name "#{current_user.name}"
         git config --global user.email "#{current_user.email}"
 
   %fieldset
     %legend Create Repository
     %pre.dark
-      = preserve do
+      :preserve
         mkdir #{@project.path}
         cd #{@project.path}
         git init
@@ -25,11 +24,11 @@
   %fieldset
     %legend Existing Git Repo?
     %pre.dark
-      = preserve do
+      :preserve
         cd existing_git_repo
         git remote add origin #{@project.url_to_repo}
         git push -u origin master
 
   - if can? current_user, :remove_project, @project
     .prepend-top-20
-      = link_to 'Remove project', @project, confirm: 'Are you sure?', method: :delete, class: "btn btn-remove pull-right"
+      = link_to 'Remove project', @project, confirm: remove_project_message(@project), method: :delete, class: "btn btn-remove pull-right"
