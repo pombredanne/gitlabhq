@@ -5,10 +5,14 @@ class DashboardController < ApplicationController
   before_filter :event_filter, only: :show
 
   def show
+    # Fetch only 30 projects.
+    # If user needs more - point to Dashboard#projects page
+    @projects_limit = 30
+
     @groups = current_user.authorized_groups.sort_by(&:human_name)
     @has_authorized_projects = @projects.count > 0
     @projects_count = @projects.count
-    @projects = @projects.limit(20)
+    @projects = @projects.limit(@projects_limit)
 
     @events = Event.in_projects(current_user.authorized_projects.pluck(:id))
     @events = @event_filter.apply_filter(@events)
@@ -33,9 +37,13 @@ class DashboardController < ApplicationController
                   current_user.owned_projects
                 else
                   current_user.authorized_projects
-                end.sorted_by_activity
+                end
+
+    @projects = @projects.where(namespace_id: Group.find_by_name(params[:group])) if params[:group].present?
+    @projects = @projects.includes(:namespace).sorted_by_activity
 
     @labels = current_user.authorized_projects.tags_on(:labels)
+    @groups = current_user.authorized_groups
 
     @projects = @projects.tagged_with(params[:label]) if params[:label].present?
     @projects = @projects.page(params[:page]).per(30)
@@ -65,10 +73,5 @@ class DashboardController < ApplicationController
 
   def load_projects
     @projects = current_user.authorized_projects.sorted_by_activity
-  end
-
-  def event_filter
-    filters = cookies['event_filter'].split(',') if cookies['event_filter'].present?
-    @event_filter ||= EventFilter.new(filters)
   end
 end

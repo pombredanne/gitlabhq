@@ -13,12 +13,13 @@ class UsersGroupsController < ApplicationController
   end
 
   def update
-    # TODO: implement
+    @member = @group.users_groups.find(params[:id])
+    @member.update_attributes(params[:users_group])
   end
 
   def destroy
     @users_group = @group.users_groups.find(params[:id])
-    @users_group.destroy unless @users_group.user == @group.owner
+    @users_group.destroy
 
     respond_to do |format|
       format.html { redirect_to members_group_path(@group), notice: 'User was  successfully removed from group.' }

@@ -21,9 +21,9 @@ class GroupsController < ApplicationController
   def create
     @group = Group.new(params[:group])
     @group.path = @group.name.dup.parameterize if @group.name
-    @group.owner = current_user
 
     if @group.save
+      @group.add_owner(current_user)
       redirect_to @group, notice: 'Group was successfully created.'
     else
       render action: "new"
@@ -31,7 +31,9 @@ class GroupsController < ApplicationController
   end
 
   def show
-    @events = Event.in_projects(project_ids).limit(20).offset(params[:offset] || 0)
+    @events = Event.in_projects(project_ids)
+    @events = event_filter.apply_filter(@events)
+    @events = @events.limit(20).offset(params[:offset] || 0)
     @last_push = current_user.recent_push
 
     respond_to do |format|
@@ -71,15 +73,7 @@ class GroupsController < ApplicationController
   end
 
   def update
-    group_params = params[:group].dup
-    owner_id = group_params.delete(:owner_id)
-
-    if owner_id
-      @group.owner = User.find(owner_id)
-      @group.save
-    end
-
-    if @group.update_attributes(group_params)
+    if @group.update_attributes(params[:group])
       redirect_to @group, notice: 'Group was successfully updated.'
     else
       render action: "edit"
@@ -87,7 +81,6 @@ class GroupsController < ApplicationController
   end
 
   def destroy
-    @group.truncate_teams
     @group.destroy
 
     redirect_to root_path, notice: 'Group was removed.'
@@ -109,7 +102,7 @@ class GroupsController < ApplicationController
 
   # Dont allow unauthorized access to group
   def authorize_read_group!
-    unless projects.present? or can?(current_user, :manage_group, @group)
+    unless projects.present? or can?(current_user, :read_group, @group)
       return render_404
     end
   end

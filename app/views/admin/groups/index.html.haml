@@ -4,7 +4,7 @@
     allows you to keep projects organized.
     Use groups for uniting related projects.
 
-  = link_to 'New Group', new_admin_group_path, class: "btn btn-small pull-right"
+  = link_to 'New Group', new_admin_group_path, class: "btn btn-new pull-right"
 %br
 = form_tag admin_groups_path, method: :get, class: 'form-inline' do
   = text_field_tag :name, params[:name], class: "span6"
@@ -31,11 +31,8 @@
 
       .clearfix.light.append-bottom-10
         %span
-          %b Owner:
-          - if group.owner
-            = link_to group.owner_name, admin_user_path(group.owner)
-          - else
-            (deleted)
+          %b Members:
+          %span.badge= group.members.size
         \|
         %span
           %b Projects:

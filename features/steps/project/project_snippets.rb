@@ -47,8 +47,8 @@ class ProjectSnippets < Spinach::FeatureSteps
     end
   end
 
-  And 'I click link "Destroy"' do
-    click_link "Destroy"
+  And 'I click link "Remove Snippet"' do
+    click_link "Remove snippet"
   end
 
   And 'I submit new snippet "Snippet three"' do
@@ -58,7 +58,7 @@ class ProjectSnippets < Spinach::FeatureSteps
     within('.file-editor') do
       find(:xpath, "//input[@id='project_snippet_content']").set 'Content of snippet three'
     end
-    click_button "Save"
+    click_button "Create snippet"
   end
 
   Then 'I should see snippet "Snippet three"' do

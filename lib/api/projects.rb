@@ -61,10 +61,10 @@ module API
       #   name (required) - name for new project
       #   description (optional) - short project description
       #   default_branch (optional) - 'master' by default
-      #   issues_enabled (optional) 
-      #   wall_enabled (optional) 
-      #   merge_requests_enabled (optional) 
-      #   wiki_enabled (optional) 
+      #   issues_enabled (optional)
+      #   wall_enabled (optional)
+      #   merge_requests_enabled (optional)
+      #   wiki_enabled (optional)
       #   snippets_enabled (optional)
       #   namespace_id (optional) - defaults to user namespace
       #   public (optional) - false by default
@@ -73,15 +73,16 @@ module API
       post do
         required_attributes! [:name]
         attrs = attributes_for_keys [:name,
-                                    :description,
-                                    :default_branch,
-                                    :issues_enabled,
-                                    :wall_enabled,
-                                    :merge_requests_enabled,
-                                    :wiki_enabled,
-                                    :snippets_enabled,
-                                    :namespace_id,
-                                    :public]
+                                     :path,
+                                     :description,
+                                     :default_branch,
+                                     :issues_enabled,
+                                     :wall_enabled,
+                                     :merge_requests_enabled,
+                                     :wiki_enabled,
+                                     :snippets_enabled,
+                                     :namespace_id,
+                                     :public]
         @project = ::Projects::CreateContext.new(current_user, attrs).execute
         if @project.saved?
           present @project, with: Entities::Project
@@ -100,9 +101,9 @@ module API
       #   name (required) - name for new project
       #   description (optional) - short project description
       #   default_branch (optional) - 'master' by default
-      #   issues_enabled (optional) 
-      #   wall_enabled (optional) 
-      #   merge_requests_enabled (optional) 
+      #   issues_enabled (optional)
+      #   wall_enabled (optional)
+      #   merge_requests_enabled (optional)
       #   wiki_enabled (optional)
       #   snippets_enabled (optional)
       #   public (optional)
@@ -112,14 +113,14 @@ module API
         authenticated_as_admin!
         user = User.find(params[:user_id])
         attrs = attributes_for_keys [:name,
-                                    :description,
-                                    :default_branch,
-                                    :issues_enabled,
-                                    :wall_enabled,
-                                    :merge_requests_enabled,
-                                    :wiki_enabled,
-                                    :snippets_enabled,
-                                    :public]
+                                     :description,
+                                     :default_branch,
+                                     :issues_enabled,
+                                     :wall_enabled,
+                                     :merge_requests_enabled,
+                                     :wiki_enabled,
+                                     :snippets_enabled,
+                                     :public]
         @project = ::Projects::CreateContext.new(user, attrs).execute
         if @project.saved?
           present @project, with: Entities::Project
@@ -163,7 +164,6 @@ module API
           user_project.forked_project_link.destroy
         end
       end
-
 
       # Get a project team members
       #
@@ -260,6 +260,20 @@ module API
         else
           {message: "Access revoked", id: params[:user_id].to_i}
         end
+      end
+
+      # search for projects current_user has access to
+      #
+      # Parameters:
+      #   query (required) - A string contained in the project name
+      #   per_page (optional) - number of projects to return per page
+      #   page (optional) - the page to retrieve
+      # Example Request:
+      #   GET /projects/search/:query
+      get "/search/:query" do
+        ids = current_user.authorized_projects.map(&:id)
+        projects = Project.where("(id in (?) OR public = true) AND (name LIKE (?))", ids, "%#{params[:query]}%")
+        present paginate(projects), with: Entities::Project
       end
     end
   end

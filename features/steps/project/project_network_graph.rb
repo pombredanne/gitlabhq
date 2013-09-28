@@ -15,11 +15,11 @@ class ProjectNetworkGraph < Spinach::FeatureSteps
   end
 
   And 'page should select "master" in select box' do
-    page.should have_selector '#ref_chzn span', text: "master"
+    page.should have_selector '.chosen-single span', text: "master"
   end
 
   And 'page should select "v2.1.0" in select box' do
-    page.should have_selector '#ref_chzn span', text: "v2.1.0"
+    page.should have_selector '.chosen-single span', text: "v2.1.0"
   end
 
   And 'page should have "master" on graph' do
@@ -30,11 +30,6 @@ class ProjectNetworkGraph < Spinach::FeatureSteps
 
   When 'I switch ref to "stable"' do
     page.select 'stable', from: 'ref'
-    sleep 2
-  end
-
-  When 'I switch ref to "v2.1.0"' do
-    page.select 'v2.1.0', from: 'ref'
     sleep 2
   end
 
@@ -61,11 +56,11 @@ class ProjectNetworkGraph < Spinach::FeatureSteps
   end
 
   And 'page should select "stable" in select box' do
-    page.should have_selector '#ref_chzn span', text: "stable"
+    page.should have_selector '.chosen-single span', text: "stable"
   end
 
   And 'page should select "v2.1.0" in select box' do
-    page.should have_selector '#ref_chzn span', text: "v2.1.0"
+    page.should have_selector '.chosen-single span', text: "v2.1.0"
   end
 
   And 'page should have "stable" on graph' do
@@ -76,7 +71,7 @@ class ProjectNetworkGraph < Spinach::FeatureSteps
 
   When 'I looking for a commit by SHA of "v2.1.0"' do
     within ".content .search" do
-      fill_in 'q', with: '98d6492'
+      fill_in 'extended_sha1', with: '98d6492'
       find('button').click
     end
     sleep 2
@@ -85,6 +80,13 @@ class ProjectNetworkGraph < Spinach::FeatureSteps
   And 'page should have "v2.1.0" on graph' do
     within '.network-graph' do
       page.should have_content 'v2.1.0'
+    end
+  end
+
+  When 'I look for a commit by ";"' do
+    within ".content .search" do
+      fill_in 'extended_sha1', with: ';'
+      find('button').click
     end
   end
 end

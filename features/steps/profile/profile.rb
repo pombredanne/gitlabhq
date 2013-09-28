@@ -12,7 +12,7 @@ class Profile < Spinach::FeatureSteps
     fill_in "user_skype", with: "testskype"
     fill_in "user_linkedin", with: "testlinkedin"
     fill_in "user_twitter", with: "testtwitter"
-    click_button "Save"
+    click_button "Save changes"
     @user.reload
   end
 
@@ -22,8 +22,17 @@ class Profile < Spinach::FeatureSteps
     @user.twitter.should == 'testtwitter'
   end
 
+  step 'I try change my password w/o old one' do
+    within '.update-password' do
+      fill_in "user_password", with: "222333"
+      fill_in "user_password_confirmation", with: "222333"
+      click_button "Save"
+    end
+  end
+
   step 'I change my password' do
     within '.update-password' do
+      fill_in "user_current_password", with: "123456"
       fill_in "user_password", with: "222333"
       fill_in "user_password_confirmation", with: "222333"
       click_button "Save"
@@ -32,10 +41,15 @@ class Profile < Spinach::FeatureSteps
 
   step 'I unsuccessfully change my password' do
     within '.update-password' do
+      fill_in "user_current_password", with: "123456"
       fill_in "user_password", with: "password"
       fill_in "user_password_confirmation", with: "confirmation"
       click_button "Save"
     end
+  end
+
+  step "I should see a missing password error message" do
+    page.should have_content "You must provide a valid current password"
   end
 
   step "I should see a password error message" do
@@ -84,11 +98,16 @@ class Profile < Spinach::FeatureSteps
   end
 
   step "I should receive feedback that the changes were saved" do
-    page.should have_content("Saved")
+    page.should have_content("saved")
   end
 
   step 'my password is expired' do
     current_user.update_attributes(password_expires_at: Time.now - 1.hour)
+  end
+
+  step "I am not an ldap user" do
+    current_user.update_attributes(extern_uid: nil,  provider: '')
+    current_user.ldap_user?.should be_false
   end
 
   step 'I redirected to expired password page' do
@@ -103,6 +122,10 @@ class Profile < Spinach::FeatureSteps
 
   step 'I redirected to sign in page' do
     current_path.should == new_user_session_path
+  end
+
+  step 'I should be redirected to account page' do
+    current_path.should == account_profile_path
   end
 
   step 'I click on my profile picture' do

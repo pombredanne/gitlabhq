@@ -3,6 +3,7 @@ require 'gitlab/satellite/satellite'
 class Projects::MergeRequestsController < Projects::ApplicationController
   before_filter :module_enabled
   before_filter :merge_request, only: [:edit, :update, :show, :commits, :diffs, :automerge, :automerge_check, :ci_status]
+  before_filter :closes_issues, only: [:edit, :update, :show, :commits, :diffs]
   before_filter :validates_merge_request, only: [:show, :diffs]
   before_filter :define_show_vars, only: [:show, :diffs]
 
@@ -17,6 +18,9 @@ class Projects::MergeRequestsController < Projects::ApplicationController
 
   def index
     @merge_requests = MergeRequestsLoadContext.new(project, current_user, params).execute
+    assignee_id, milestone_id = params[:assignee_id], params[:milestone_id]
+    @assignee = @project.team.find(assignee_id) if assignee_id.present? && !assignee_id.to_i.zero?
+    @milestone = @project.milestones.find(milestone_id) if milestone_id.present? && !milestone_id.to_i.zero?
   end
 
   def show
@@ -24,8 +28,8 @@ class Projects::MergeRequestsController < Projects::ApplicationController
       format.html
       format.js
 
-      format.diff  { render text: @merge_request.to_diff }
-      format.patch { render text: @merge_request.to_patch }
+      format.diff { render text: @merge_request.to_diff(current_user) }
+      format.patch { render text: @merge_request.to_patch(current_user) }
     end
   end
 
@@ -33,27 +37,41 @@ class Projects::MergeRequestsController < Projects::ApplicationController
     @commit = @merge_request.last_commit
 
     @comments_allowed = @reply_allowed = true
-    @comments_target  = { noteable_type: 'MergeRequest',
-                          noteable_id: @merge_request.id }
+    @comments_target = {noteable_type: 'MergeRequest',
+                        noteable_id: @merge_request.id}
     @line_notes = @merge_request.notes.where("line_code is not null")
+
+    diff_line_count = Commit::diff_line_count(@merge_request.diffs)
+    @suppress_diff = Commit::diff_suppress?(@merge_request.diffs, diff_line_count) && !params[:force_show_diff]
+    @force_suppress_diff = Commit::diff_force_suppress?(@merge_request.diffs, diff_line_count)
   end
 
   def new
-    @merge_request = @project.merge_requests.new(params[:merge_request])
+    @merge_request = MergeRequest.new(params[:merge_request])
+    @merge_request.source_project = @project unless @merge_request.source_project
+    @merge_request.target_project = @project unless @merge_request.target_project
+    @target_branches = @merge_request.target_project.nil? ? [] : @merge_request.target_project.repository.branch_names
+    @source_project = @merge_request.source_project
+    @merge_request
   end
 
   def edit
+    @source_project = @merge_request.source_project
+    @target_project = @merge_request.target_project
+    @target_branches = @merge_request.target_project.repository.branch_names
   end
 
   def create
-    @merge_request = @project.merge_requests.new(params[:merge_request])
+    @merge_request = MergeRequest.new(params[:merge_request])
     @merge_request.author = current_user
-
+    @target_branches ||= []
     if @merge_request.save
       @merge_request.reload_code
-      redirect_to [@project, @merge_request], notice: 'Merge request was successfully created.'
+      redirect_to [@merge_request.target_project, @merge_request], notice: 'Merge request was successfully created.'
     else
-      render "new"
+      @source_project = @merge_request.source_project
+      @target_project = @merge_request.target_project
+      render action: "new"
     end
   end
 
@@ -61,7 +79,7 @@ class Projects::MergeRequestsController < Projects::ApplicationController
     if @merge_request.update_attributes(params[:merge_request].merge(author_id_of_changes: current_user.id))
       @merge_request.reload_code
       @merge_request.mark_as_unchecked
-      redirect_to [@project, @merge_request], notice: 'Merge request was successfully updated.'
+      redirect_to [@merge_request.target_project, @merge_request], notice: 'Merge request was successfully updated.'
     else
       render "edit"
     end
@@ -89,24 +107,41 @@ class Projects::MergeRequestsController < Projects::ApplicationController
   end
 
   def branch_from
-    @commit = @repository.commit(params[:ref])
+    #This is always source
+    @source_project = @merge_request.nil? ? @project : @merge_request.source_project
+    @commit = @repository.commit(params[:ref]) if params[:ref].present?
   end
 
   def branch_to
-    @commit = @repository.commit(params[:ref])
+    @target_project = selected_target_project
+    @commit = @target_project.repository.commit(params[:ref]) if params[:ref].present?
+  end
+
+  def update_branches
+    @target_project = selected_target_project
+    @target_branches = @target_project.repository.branch_names
+    @target_branches
   end
 
   def ci_status
     status = project.gitlab_ci_service.commit_status(merge_request.last_commit.sha)
-    response = { status: status }
+    response = {status: status}
 
     render json: response
   end
 
   protected
 
+  def selected_target_project
+    ((@project.id.to_s == params[:target_project_id]) || @project.forked_project_link.nil?) ? @project : @project.forked_project_link.forked_from_project
+  end
+
   def merge_request
-    @merge_request ||= @project.merge_requests.find(params[:id])
+    @merge_request ||= @project.merge_requests.find_by_iid!(params[:id])
+  end
+
+  def closes_issues
+    @closes_issues ||= @merge_request.closes_issues
   end
 
   def authorize_modify_merge_request!
@@ -122,12 +157,15 @@ class Projects::MergeRequestsController < Projects::ApplicationController
   end
 
   def validates_merge_request
-    # Show git not found page if target branch doesn't exist
-    return invalid_mr unless @project.repository.branch_names.include?(@merge_request.target_branch)
+    # Show git not found page
+    # if there is no saved commits between source & target branch
+    if @merge_request.commits.blank?
+       # and if source target doesn't exist
+       return invalid_mr unless @merge_request.target_project.repository.branch_names.include?(@merge_request.target_branch)
 
-    # Show git not found page if source branch doesn't exist
-    # and there is no saved commits between source & target branch
-    return invalid_mr if !@project.repository.branch_names.include?(@merge_request.source_branch) && @merge_request.commits.blank?
+       # or if source branch doesn't exist
+       return invalid_mr unless @merge_request.source_project.repository.branch_names.include?(@merge_request.source_branch)
+    end
   end
 
   def define_show_vars

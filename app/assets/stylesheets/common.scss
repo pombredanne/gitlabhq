@@ -46,15 +46,27 @@ table a code {
 /** FLASH message **/
 .flash-container {
   display: none;
-  .alert {
-    cursor: pointer;
-    margin: 0;
-    text-align: center;
-    border-radius: 0;
+  cursor: pointer;
+  margin: 0;
+  text-align: center;
+  color: #fff;
+  font-size: 14px;
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  opacity: 0.8;
+  z-index: 100;
 
-    span {
-      font-size: 14px;
-    }
+  .flash-notice {
+    background: #49C;
+    padding: 10px;
+    text-shadow: 0 1px 1px #178;
+  }
+
+  .flash-alert {
+    background: #C67;
+    text-shadow: 0 1px 1px #945;
+    padding: 10px;
   }
 }
 
@@ -81,33 +93,6 @@ span.update-author {
   font-weight: normal;
 }
 
-form {
-  @extend .form-horizontal;
-
-  .actions {
-    @extend .form-actions;
-  }
-
-  .clearfix {
-    @extend .control-group;
-  }
-
-  .input {
-    @extend .controls;
-  }
-
-  label {
-    @extend .control-label;
-  }
-  .xlarge {
-    @extend .input-xlarge;
-  }
-  .xxlarge {
-    @extend .input-xxlarge;
-  }
-}
-
-
 .field_with_errors {
   display: inline;
 }
@@ -121,15 +106,6 @@ ul.breadcrumb {
   }
 
   a {
-    color: #474D57;
-    font-weight: bold;
-    font-size: 14px;
-  }
-}
-
-input[type=text] {
-  &.large_text {
-    padding: 6px;
     font-size: 16px;
   }
 }
@@ -222,19 +198,6 @@ li.note {
   }
 }
 
-.remember_me {
-  text-align: left;
-
-  input {
-    margin: 0;
-  }
-
-  span {
-    padding-left: 5px;
-  }
-}
-
-
 .rss-icon {
   img {
     width: 24px;
@@ -245,7 +208,6 @@ li.note {
     line-height: 24px;
   }
 }
-
 
 .supp_diff_link,
 .show-all-commits {
@@ -403,4 +365,25 @@ img.emoji {
 .group-name {
   font-size: 14px;
   line-height: 24px;
+}
+
+table {
+  td.permission-x {
+    background: #D9EDF7 !important;
+    text-align: center;
+  }
+}
+
+.dashboard-intro-icon {
+  float: left;
+  font-size: 32px;
+  color: #AAA;
+  padding: 5px 0;
+  width: 50px;
+  min-height: 100px;
+}
+
+.navbar-gitlab .navbar-inner .nav > li .btn-sign-in {
+  @extend .btn-new;
+  padding: 5px 15px;
 }

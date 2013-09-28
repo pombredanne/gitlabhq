@@ -35,7 +35,7 @@ module ApplicationHelper
     args.any? { |v| v.to_s.downcase == controller.controller_name }
   end
 
-  # Check if a partcular action is the current one
+  # Check if a particular action is the current one
   #
   # args - One or more action names to check
   #
@@ -90,6 +90,8 @@ module ApplicationHelper
   end
 
   def search_autocomplete_source
+    return unless current_user
+
     projects = current_user.authorized_projects.map { |p| { label: "project: #{simple_sanitize(p.name_with_namespace)}", url: project_path(p) } }
     groups = current_user.authorized_groups.map { |group| { label: "group: #{simple_sanitize(group.name)}", url: group_path(group) } }
 
@@ -226,4 +228,20 @@ module ApplicationHelper
     content_tag :i, nil, class: 'icon-lock cgreen'
   end
 
+  def search_placeholder
+    if @project && @project.persisted?
+      "Search in this project"
+    elsif @group && @group.persisted?
+      "Search in this group"
+    else
+      "Search"
+    end
+  end
+
+  def first_line(str)
+    lines = str.split("\n")
+    line = lines.first
+    line += "..." if lines.size > 1
+    line
+  end
 end

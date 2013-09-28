@@ -1,7 +1,6 @@
 class Projects::TeamMembersController < Projects::ApplicationController
   # Authorize
-  before_filter :authorize_read_project!
-  before_filter :authorize_admin_project!, except: [:index, :show]
+  before_filter :authorize_admin_project!
 
   layout "project_settings"
 
@@ -49,7 +48,7 @@ class Projects::TeamMembersController < Projects::ApplicationController
   def apply_import
     giver = Project.find(params[:source_project_id])
     status = @project.team.import(giver)
-    notice = status ? "Succesfully imported" : "Import failed"
+    notice = status ? "Successfully imported" : "Import failed"
 
     redirect_to project_team_index_path(project), notice: notice
   end
