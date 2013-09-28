@@ -4,7 +4,7 @@ class Dashboard < Spinach::FeatureSteps
   include SharedProject
 
   Then 'I should see "New Project" link' do
-    page.should have_link "New Project"
+    page.should have_link "New project"
   end
 
   Then 'I should see "Shop" project link' do
@@ -22,6 +22,7 @@ class Dashboard < Spinach::FeatureSteps
 
   Then 'I see prefilled new Merge Request page' do
     current_path.should == new_project_merge_request_path(@project)
+    find("#merge_request_target_project_id").value.should == @project.id.to_s
     find("#merge_request_source_branch").value.should == "new_design"
     find("#merge_request_target_branch").value.should == "master"
     find("#merge_request_title").value.should == "New Design"
@@ -56,7 +57,7 @@ class Dashboard < Spinach::FeatureSteps
 
   And 'I have group with projects' do
     @group   = create(:group)
-    @project = create(:project, group: @group)
+    @project = create(:project, namespace: @group)
     @event   = create(:closed_issue_event, project: @project)
 
     @project.team << [current_user, :master]

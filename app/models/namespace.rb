@@ -20,7 +20,7 @@ class Namespace < ActiveRecord::Base
   has_many :projects, dependent: :destroy
   belongs_to :owner, class_name: "User"
 
-  validates :owner, presence: true
+  validates :owner, presence: true, unless: ->(n) { n.type == "Group" }
   validates :name, presence: true, uniqueness: true,
             length: { within: 0..255 },
             format: { with: Gitlab::Regex.name_regex,
@@ -73,7 +73,7 @@ class Namespace < ActiveRecord::Base
         gitlab_shell.rm_satellites(path_was)
         send_update_instructions
       rescue
-        # Returning false does not rolback after_* transaction but gives
+        # Returning false does not rollback after_* transaction but gives
         # us information about failing some of tasks
         false
       end

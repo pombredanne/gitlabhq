@@ -1,20 +1,21 @@
-- if can? current_user, :admin_project, @project
-  .alert.alert-info
-    %span
-      Post receive hooks for binding events when someone push to repository.
-      %br
-      Read more about web hooks
-      %strong #{link_to "here", help_web_hooks_path, class: "vlink"}
+%h3.page-title
+  Post-receive hooks
+
+%p.light
+  #{link_to "Post-receive hooks ", help_web_hooks_path, class: "vlink"} can be
+  used for binding events when someone pushes to the repository.
+
+%hr.clearfix
 
 = form_for [@project, @hook], as: :hook, url: project_hooks_path(@project), html: { class: 'form-inline' } do |f|
   -if @hook.errors.any?
     .alert.alert-error
       - @hook.errors.full_messages.each do |msg|
         %p= msg
-  .clearfix
+  .control-group
     = f.label :url, "URL:"
-    .input
-      = f.text_field :url, class: "text_field xxlarge"
+    .controls
+      = f.text_field :url, class: "text_field input-xxlarge input-xpadding", placeholder: 'http://example.com/trigger-ci.json'
       &nbsp;
       = f.submit "Add Web Hook", class: "btn btn-create"
 %hr
