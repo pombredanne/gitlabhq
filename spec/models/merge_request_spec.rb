@@ -18,6 +18,7 @@
 #  merge_status      :string(255)
 #  target_project_id :integer          not null
 #  iid               :integer
+#  description       :text
 #
 
 require 'spec_helper'
@@ -48,8 +49,8 @@ describe MergeRequest do
 
     before do
       merge_request.stub(:commits) { [merge_request.source_project.repository.commit] }
-      create(:note, commit_id: merge_request.commits.first.id, noteable_type: 'Commit')
-      create(:note, noteable: merge_request)
+      create(:note, commit_id: merge_request.commits.first.id, noteable_type: 'Commit', project: merge_request.project)
+      create(:note, noteable: merge_request, project: merge_request.project)
     end
 
     it "should include notes for commits" do
@@ -115,13 +116,13 @@ describe MergeRequest do
     end
 
     it 'accesses the set of issues that will be closed on acceptance' do
-      subject.project.default_branch = subject.target_branch
+      subject.project.stub(default_branch: subject.target_branch)
 
       subject.closes_issues.should == [issue0, issue1].sort_by(&:id)
     end
 
     it 'only lists issues as to be closed if it targets the default branch' do
-      subject.project.default_branch = 'master'
+      subject.project.stub(default_branch: 'master')
       subject.target_branch = 'something-else'
 
       subject.closes_issues.should be_empty

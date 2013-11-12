@@ -91,7 +91,6 @@ describe API::API do
     it "should assign attributes to project" do
       project = attributes_for(:project, {
         description: Faker::Lorem.sentence,
-        default_branch: 'stable',
         issues_enabled: false,
         wall_enabled: false,
         merge_requests_enabled: false,
@@ -110,16 +109,13 @@ describe API::API do
       project = attributes_for(:project, { public: true })
       post api("/projects", user), project
       json_response['public'].should be_true
-
     end
 
     it "should set a project as private" do
       project = attributes_for(:project, { public: false })
       post api("/projects", user), project
       json_response['public'].should be_false
-
     end
-
   end
 
   describe "POST /projects/user/:id" do
@@ -146,7 +142,6 @@ describe API::API do
     it "should assign attributes to project" do
       project = attributes_for(:project, {
         description: Faker::Lorem.sentence,
-        default_branch: 'stable',
         issues_enabled: false,
         wall_enabled: false,
         merge_requests_enabled: false,
@@ -727,6 +722,44 @@ describe API::API do
         json_response.should be_an Array
         json_response.size.should == 1
         json_response.first['name'].should == "another #{query}"
+      end
+    end
+  end
+
+  describe "DELETE /projects/:id" do
+    context "when authenticated as user" do
+      it "should remove project" do
+        delete api("/projects/#{project.id}", user)
+        response.status.should == 200
+      end
+
+      it "should not remove a project if not an owner" do
+        user3 = create(:user)
+        project.team << [user3, :developer]
+        delete api("/projects/#{project.id}", user3)
+        response.status.should == 403
+      end
+
+      it "should not remove a non existing project" do
+        delete api("/projects/1328", user)
+        response.status.should == 404
+      end
+
+      it "should not remove a project not attached to user" do
+        delete api("/projects/#{project.id}", user2)
+        response.status.should == 404
+      end
+    end
+
+    context "when authenticated as admin" do
+      it "should remove any existing project" do
+        delete api("/projects/#{project.id}", admin)
+        response.status.should == 200
+      end
+
+      it "should not remove a non existing project" do
+        delete api("/projects/1328", admin)
+        response.status.should == 404
       end
     end
   end

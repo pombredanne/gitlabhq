@@ -64,9 +64,10 @@ If you want to contribute, please first read our [Contributing Guidelines](https
 
 * [Installation guides](https://github.com/gitlabhq/gitlab-public-wiki/wiki/Unofficial-Installation-Guides) public wiki with unofficial guides to install GitLab on different operating systems.
 
-* [BitNami one-click installers](http://bitnami.com/stack/gitlab)
 
-* [TurnKey Linux virtual appliance](http://www.turnkeylinux.org/gitlab)
+* [Digital Ocean 1-Click Application Install](https://www.digitalocean.com/) Have a new server up in 55 seconds. Digital Ocean uses SSD disks which is great for an IO intensive app as GitLab. Look for GitLab under 'Select Image' => 'Applications' when creating a droplet.
+
+* [BitNami one-click installers](http://bitnami.com/stack/gitlab) Get an image with GitLab and GitLab CI preinstalled for Amazon Web Services, Azure, VMware or your local server.
 
 
 ### New versions and upgrading
@@ -99,7 +100,7 @@ Start it with [Foreman](https://github.com/ddollar/foreman)
 or start each component separately
 
     bundle exec rails s
-    bundle exec rake sidekiq:start
+    script/background_jobs start
 
 ### Run the tests
 
@@ -127,14 +128,17 @@ or start each component separately
 
 ### GitLab interfaces
 
-* [GitLab API](doc/api/README.md)
+* [GitLab API doc](doc/api/README.md) or see the [GitLab API website](http://api.gitlab.org/)
 
-* [Rake tasks](doc/raketasks)
+* [Rake tasks](doc/raketasks) including a [backup and restore procedure](doc/raketasks/backup_restore.md)
 
 * [Directory structure](doc/install/structure.md)
 
-* [Databases](doc/install/databases.md)
+* [Database installation](doc/install/databases.md)
 
+* [Markdown specification](doc/markdown/markdown.md)
+
+* [Security guide](doc/security/rack_attack.md) to throttle abusive requests
 
 ### Getting help
 
@@ -157,10 +161,8 @@ or start each component separately
 
 ### Getting in touch
 
-* [Core team](https://github.com/gitlabhq?tab=members)
+* [Core team](http://gitlab.org/team/)
 
-* [Contributors](https://github.com/gitlabhq/gitlabhq/graphs/contributors)
+* [Contributors](http://contributors.gitlab.org/)
 
-* [Leader](https://github.com/randx)
-
-* [Contact page](http://gitlab.org/contact/)
+* [Community](http://gitlab.org/community/)

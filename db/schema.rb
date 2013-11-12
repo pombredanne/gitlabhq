@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130926081215) do
+ActiveRecord::Schema.define(:version => 20131106151520) do
 
   create_table "deploy_keys_projects", :force => true do |t|
     t.integer  "deploy_key_id", :null => false
@@ -171,7 +171,6 @@ ActiveRecord::Schema.define(:version => 20130926081215) do
     t.datetime "created_at",                                   :null => false
     t.datetime "updated_at",                                   :null => false
     t.integer  "creator_id"
-    t.string   "default_branch"
     t.boolean  "issues_enabled",         :default => true,     :null => false
     t.boolean  "wall_enabled",           :default => true,     :null => false
     t.boolean  "merge_requests_enabled", :default => true,     :null => false
@@ -283,10 +282,16 @@ ActiveRecord::Schema.define(:version => 20130926081215) do
     t.integer  "notification_level",     :default => 1,     :null => false
     t.datetime "password_expires_at"
     t.integer  "created_by_id"
+    t.string   "avatar"
+    t.string   "confirmation_token"
+    t.datetime "confirmed_at"
+    t.datetime "confirmation_sent_at"
+    t.string   "unconfirmed_email"
   end
 
   add_index "users", ["admin"], :name => "index_users_on_admin"
   add_index "users", ["authentication_token"], :name => "index_users_on_authentication_token", :unique => true
+  add_index "users", ["confirmation_token"], :name => "index_users_on_confirmation_token", :unique => true
   add_index "users", ["email"], :name => "index_users_on_email", :unique => true
   add_index "users", ["extern_uid", "provider"], :name => "index_users_on_extern_uid_and_provider", :unique => true
   add_index "users", ["name"], :name => "index_users_on_name"

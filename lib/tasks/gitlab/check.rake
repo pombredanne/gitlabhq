@@ -289,7 +289,6 @@ namespace :gitlab do
     ########################
 
     def check_gitlab_git_config
-      gitlab_user = Gitlab.config.gitlab.user
       print "Git configured for #{gitlab_user} user? ... "
 
       options = {
@@ -393,14 +392,20 @@ namespace :gitlab do
       hook_file = "update"
       gitlab_shell_hooks_path = Gitlab.config.gitlab_shell.hooks_path
       gitlab_shell_hook_file  = File.join(gitlab_shell_hooks_path, hook_file)
-      gitlab_shell_ssh_user = Gitlab.config.gitlab_shell.ssh_user
 
-      unless File.exists?(gitlab_shell_hook_file)
-        puts "can't check because of previous errors".magenta
-        return
+      if File.exists?(gitlab_shell_hook_file)
+        puts "yes".green
+      else
+        puts "no".red
+        puts "Could not find #{gitlab_shell_hook_file}"
+        try_fixing_it(
+          'Check the hooks_path in config/gitlab.yml',
+          'Check your gitlab-shell installation'
+        )
+        for_more_information(
+          see_installation_guide_section "GitLab Shell"
+        )
       end
-
-      puts "yes".green
     end
 
     def check_repo_base_exists
@@ -638,12 +643,12 @@ namespace :gitlab do
     def check_sidekiq_running
       print "Running? ... "
 
-      if sidekiq_process_match
+      if sidekiq_process_count > 0
         puts "yes".green
       else
         puts "no".red
         try_fixing_it(
-          sudo_gitlab("bundle exec rake sidekiq:start RAILS_ENV=production")
+          sudo_gitlab("RAILS_ENV=production script/background_jobs start")
         )
         for_more_information(
           see_installation_guide_section("Install Init Script"),
@@ -654,26 +659,26 @@ namespace :gitlab do
     end
 
     def only_one_sidekiq_running
-      sidekiq_match = sidekiq_process_match
-      return unless sidekiq_match
+      process_count = sidekiq_process_count
+      return if process_count.zero?
 
       print 'Number of Sidekiq processes ... '
-      if sidekiq_match.length == 1
+      if process_count == 1
         puts '1'.green
       else
-        puts "#{sidekiq_match.length}".red
+        puts "#{process_count}".red
         try_fixing_it(
           'sudo service gitlab stop',
-          'sudo pkill -f sidekiq',
-          'sleep 10 && sudo pkill -9 -f sidekiq',
+          "sudo pkill -u #{gitlab_user} -f sidekiq",
+          "sleep 10 && sudo pkill -9 -u #{gitlab_user} -f sidekiq",
           'sudo service gitlab start'
         )
         fix_and_rerun
       end
     end
 
-    def sidekiq_process_match
-      run_and_match("ps ux | grep -i sidekiq", /(sidekiq \d+\.\d+\.\d+.+$)/)
+    def sidekiq_process_count
+      `ps ux`.scan(/sidekiq \d+\.\d+\.\d+/).count
     end
   end
 
@@ -709,8 +714,11 @@ namespace :gitlab do
   end
 
   def sudo_gitlab(command)
-    gitlab_user = Gitlab.config.gitlab.user
     "sudo -u #{gitlab_user} -H #{command}"
+  end
+
+  def gitlab_user
+    Gitlab.config.gitlab.user
   end
 
   def start_checking(component)
@@ -728,7 +736,7 @@ namespace :gitlab do
   end
 
   def check_gitlab_shell
-    required_version = Gitlab::VersionInfo.new(1, 7, 1)
+    required_version = Gitlab::VersionInfo.new(1, 7, 6)
     current_version = Gitlab::VersionInfo.parse(gitlab_shell_version)
 
     print "GitLab Shell version >= #{required_version} ? ... "

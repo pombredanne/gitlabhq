@@ -24,19 +24,21 @@
 #  import_url             :string(255)
 #
 
-require "grit"
-
 class Project < ActiveRecord::Base
   include Gitlab::ShellAdapter
   extend Enumerize
+   
+  ActsAsTaggableOn.strict_case_match = true
 
-  attr_accessible :name, :path, :description, :default_branch, :issues_tracker, :label_list,
+  attr_accessible :name, :path, :description, :issues_tracker, :label_list,
     :issues_enabled, :wall_enabled, :merge_requests_enabled, :snippets_enabled, :issues_tracker_id,
     :wiki_enabled, :public, :import_url, :last_activity_at, as: [:default, :admin]
 
   attr_accessible :namespace_id, :creator_id, as: :admin
 
   acts_as_taggable_on :labels, :issues_default_labels
+
+  attr_accessor :new_default_branch
 
   # Relations
   belongs_to :creator,      foreign_key: "creator_id", class_name: "User"
@@ -48,12 +50,14 @@ class Project < ActiveRecord::Base
   has_one :campfire_service, dependent: :destroy
   has_one :pivotaltracker_service, dependent: :destroy
   has_one :hipchat_service, dependent: :destroy
+  has_one :flowdock_service, dependent: :destroy
   has_one :forked_project_link, dependent: :destroy, foreign_key: "forked_to_project_id"
   has_one :forked_from_project, through: :forked_project_link
 
   has_many :services,           dependent: :destroy
   has_many :events,             dependent: :destroy
   has_many :merge_requests,     dependent: :destroy, foreign_key: "target_project_id"
+  has_many :fork_merge_requests,dependent: :destroy, foreign_key: "source_project_id", class_name: MergeRequest
   has_many :issues,             dependent: :destroy, order: "state DESC, created_at DESC"
   has_many :milestones,         dependent: :destroy
   has_many :notes,              dependent: :destroy
@@ -122,7 +126,7 @@ class Project < ActiveRecord::Base
     end
 
     def search query
-      where("projects.name LIKE :query OR projects.path LIKE :query", query: "%#{query}%")
+      joins(:namespace).where("projects.name LIKE :query OR projects.path LIKE :query OR namespaces.name LIKE :query OR projects.description LIKE :query", query: "%#{query}%")
     end
 
     def find_with_namespace(id)
@@ -143,7 +147,7 @@ class Project < ActiveRecord::Base
   end
 
   def repository
-    @repository ||= Repository.new(path_with_namespace, default_branch)
+    @repository ||= Repository.new(path_with_namespace)
   end
 
   def saved?
@@ -221,7 +225,7 @@ class Project < ActiveRecord::Base
   end
 
   def available_services_names
-    %w(gitlab_ci campfire hipchat pivotaltracker)
+    %w(gitlab_ci campfire hipchat pivotaltracker flowdock)
   end
 
   def gitlab_ci?
@@ -300,21 +304,16 @@ class Project < ActiveRecord::Base
     end
   end
 
-  def discover_default_branch
-    # Discover the default branch, but only if it hasn't already been set to
-    # something else
-    if repository.exists? && default_branch.nil?
-      update_attributes(default_branch: self.repository.discover_default_branch)
-    end
-  end
-
   def update_merge_requests(oldrev, newrev, ref, user)
     return true unless ref =~ /heads/
     branch_name = ref.gsub("refs/heads/", "")
     c_ids = self.repository.commits_between(oldrev, newrev).map(&:id)
 
-    # Update code for merge requests
+    # Update code for merge requests into project between project branches
     mrs = self.merge_requests.opened.by_branch(branch_name).all
+    # Update code for merge requests between project and project fork
+    mrs += self.fork_merge_requests.opened.by_branch(branch_name).all
+
     mrs.each { |merge_request| merge_request.reload_code; merge_request.mark_as_unchecked }
 
     # Close merge requests
@@ -443,5 +442,13 @@ class Project < ActiveRecord::Base
     Event.where(project_id: self.id).
       order('id DESC').limit(100).
       update_all(updated_at: Time.now)
+  end
+
+  def project_member(user)
+    users_projects.where(user_id: user).first
+  end
+
+  def default_branch
+    @default_branch ||= repository.root_ref if repository.exists?
   end
 end

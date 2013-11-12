@@ -24,7 +24,6 @@ class GitPushService
     create_push_event
 
     project.ensure_satellite_exists
-    project.discover_default_branch
     project.repository.expire_cache
 
     if push_to_existing_branch?(ref, oldrev)
@@ -112,6 +111,7 @@ class GitPushService
   #   ref: String,
   #   user_id: String,
   #   user_name: String,
+  #   project_id: String,
   #   repository: {
   #     name: String,
   #     url: String,
@@ -136,6 +136,7 @@ class GitPushService
       ref: ref,
       user_id: user.id,
       user_name: user.name,
+      project_id: project.id,
       repository: {
         name: project.name,
         url: project.url_to_repo,

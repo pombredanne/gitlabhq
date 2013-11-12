@@ -45,6 +45,7 @@ module TestEnv
   def disable_mailer
     NotificationService.any_instance.stub(mailer: double.as_null_object)
   end
+
   def enable_mailer
     NotificationService.any_instance.unstub(:mailer)
   end
@@ -83,6 +84,10 @@ module TestEnv
     )
     Repository.any_instance.stub(
       size: 12.45
+    )
+
+    ActivityObserver.any_instance.stub(
+      current_user: double("current_user", id: 1)
     )
   end
 

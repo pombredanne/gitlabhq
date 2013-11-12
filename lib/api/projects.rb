@@ -60,7 +60,6 @@ module API
       # Parameters:
       #   name (required) - name for new project
       #   description (optional) - short project description
-      #   default_branch (optional) - 'master' by default
       #   issues_enabled (optional)
       #   wall_enabled (optional)
       #   merge_requests_enabled (optional)
@@ -75,7 +74,6 @@ module API
         attrs = attributes_for_keys [:name,
                                      :path,
                                      :description,
-                                     :default_branch,
                                      :issues_enabled,
                                      :wall_enabled,
                                      :merge_requests_enabled,
@@ -129,6 +127,16 @@ module API
         end
       end
 
+      # Remove project
+      #
+      # Parameters:
+      #   id (required) - The ID of a project
+      # Example Request:
+      #   DELETE /projects/:id
+      delete ":id" do
+        authorize! :remove_project, user_project
+        user_project.destroy
+      end
 
       # Mark this project as forked from another
       #
