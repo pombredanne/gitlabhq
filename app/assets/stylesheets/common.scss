@@ -351,3 +351,40 @@ table {
   @extend .btn-new;
   padding: 5px 15px;
 }
+
+.broadcast-message {
+  padding: 10px;
+  text-align: center;
+  background: #555;
+  color: #BBB;
+}
+
+.ajax-users-select {
+  width: 400px;
+
+  &.input-large {
+    width: 210px;
+  }
+}
+
+.user-result {
+  .user-image {
+    float: left;
+  }
+  .user-name {
+  }
+  .user-username {
+    color: #999;
+  }
+}
+
+.namespace-result {
+  .namespace-kind {
+    color: #AAA;
+    font-weight: normal;
+  }
+  .namespace-path {
+    margin-left: 10px;
+    font-weight: bolder;
+  }
+}
